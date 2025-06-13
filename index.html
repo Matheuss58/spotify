@@ -3,6 +3,14 @@
 <head>
     <title>Músicas Tops</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="/manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js');
+    });
+  }
+</script>
 </head>
 <body>
     <h1 class="title">MÚSICAS TOPS</h1>
