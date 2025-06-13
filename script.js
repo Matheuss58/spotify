@@ -271,5 +271,12 @@ document.querySelectorAll('button').forEach(btn => {
 // Previne o zoom indesejado com toque duplo
 document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
 
+// Verifica se é instalável
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  console.log("Pode ser instalado como app!");
+  // Aqui você pode mostrar um botão "Instalar App"
+});
+
 // Inicia o player
 loadSongs();
