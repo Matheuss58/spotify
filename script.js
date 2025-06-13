@@ -9,22 +9,23 @@ const nowPlayingArtist = document.getElementById('nowPlayingArtist');
 const nowPlayingCover = document.getElementById('nowPlayingCover');
 const shuffleBtn = document.getElementById('shuffleBtn');
 
-// Melhora a resposta tátil nos botões
-const buttons = document.querySelectorAll('button');
-buttons.forEach(btn => {
-    btn.addEventListener('touchstart', () => {
-        btn.style.transform = 'scale(0.95)';
-    });
-    btn.addEventListener('touchend', () => {
-        btn.style.transform = 'scale(1)';
-    });
-});
+// Ícones SVG para play/pause
+const PLAY_ICON = `
+    <svg viewBox="0 0 24 24" width="24" height="24">
+        <path fill="currentColor" d="M8 5v14l11-7z"/>
+    </svg>
+`;
 
-// Previne o zoom indesejado com toque duplo
-document.addEventListener('dblclick', (e) => {
-    e.preventDefault();
+const PAUSE_ICON = `
+    <svg viewBox="0 0 24 24" width="24" height="24">
+        <path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+    </svg>
+`;
 
-}, { passive: false });
+// Inicializa o botão com o ícone de play
+playPauseBtn.innerHTML = PLAY_ICON;
+
+// Configuração inicial
 let isShuffleMode = false;
 let currentSongIndex = 0;
 const songs = [
@@ -45,9 +46,10 @@ const songs = [
     'sacrilegio inepto.mp3',
     'sozin.mp3',
     'trela.mp3',
-    'vivendo o passado.mp3',
+    'vivendo o passado.mp3'
 ];
 
+// Função para carregar e exibir a playlist
 function loadSongs() {
     renderPlaylist();
     if (songs.length > 0) {
@@ -55,25 +57,23 @@ function loadSongs() {
     }
 }
 
+// Função para tocar uma música específica
 function playSong(index) {
     if (index >= 0 && index < songs.length) {
         currentSongIndex = index;
         const song = songs[index];
         const baseName = song.replace('.mp3', '');
-        
-        // Atualiza imediatamente a interface
+    
+
         updateNowPlayingUI(baseName);
         
         audioPlayer.src = `musicas/${song}`;
-        audioPlayer.load(); // Força o carregamento antes de tocar
-        audioPlayer.play()
-            .then(() => {
-                playPauseBtn.textContent = '⏸';
-            })
-            .catch(e => console.error("Erro ao reproduzir:", e));
+        audioPlayer.load();
+        audioPlayer.play().catch(e => console.error("Erro ao reproduzir:", e));
     }
 }
 
+// Atualiza a interface com a música atual
 function updateNowPlayingUI(baseName) {
     nowPlayingTitle.textContent = baseName;
     nowPlayingArtist.textContent = 'Matheus Galvão';
@@ -81,11 +81,11 @@ function updateNowPlayingUI(baseName) {
     highlightCurrentSong();
 }
 
+// Carrega a capa do álbum
 function loadAlbumCover(baseName) {
     nowPlayingCover.innerHTML = '';
     const img = document.createElement('img');
     
-    // Lista de extensões que serão testadas
     const extensions = ['jpeg', 'jpg', 'png', 'gif', 'webp', 'avif'];
     let currentExtensionIndex = 0;
     
@@ -94,12 +94,11 @@ function loadAlbumCover(baseName) {
             const ext = extensions[currentExtensionIndex++];
             img.src = `musicas/covers/${baseName}.${ext}`;
         } else {
-            // Se nenhuma extensão funcionar, mostra ícone padrão
             nowPlayingCover.innerHTML = '🎵';
             nowPlayingCover.style.fontSize = '24px';
             nowPlayingCover.style.display = 'flex';
-            nowCover.style.alignItems = 'center';
-            nowCover.style.justifyContent = 'center';
+            nowPlayingCover.style.alignItems = 'center';
+            nowPlayingCover.style.justifyContent = 'center';
         }
     }
     
@@ -109,22 +108,14 @@ function loadAlbumCover(baseName) {
     img.style.objectFit = 'cover';
     img.style.borderRadius = '5px';
     
-    img.onload = function() {
-        // Se a imagem carregar com sucesso
-        nowPlayingCover.appendChild(img);
-    };
+    img.onload = () => nowPlayingCover.appendChild(img);
+    img.onerror = tryNextExtension;
     
-    img.onerror = function() {
-        // Se der erro, tenta a próxima extensão
-        tryNextExtension();
-    };
-    
-    // Começa tentando a primeira extensão
     tryNextExtension();
-    
     nowPlayingCover.appendChild(img);
 }
 
+// Renderiza a lista de músicas
 function renderPlaylist() {
     playlistElement.innerHTML = '';
     songs.forEach((song, index) => {
@@ -137,7 +128,6 @@ function renderPlaylist() {
         const img = document.createElement('img');
         img.alt = 'Capa do álbum';
         
-        // Mesma lógica de tentar várias extensões
         const extensions = ['jpeg', 'jpg', 'png', 'gif', 'webp', 'avif'];
         let currentExtIndex = 0;
         
@@ -171,21 +161,22 @@ function renderPlaylist() {
     });
 }
 
+// Destaca a música atual na playlist
 function highlightCurrentSong() {
     const items = playlistElement.getElementsByTagName('li');
     for (let i = 0; i < items.length; i++) {
         items[i].className = i === currentSongIndex ? 'current' : '';
     }
     
-    // Rolagem automática para a música atual
     if (items[currentSongIndex]) {
         items[currentSongIndex].scrollIntoView({
             behavior: 'smooth',
-            block: 'center' // Isso mantém a música no centro da visualização
+            block: 'center'
         });
     }
 }
 
+// Formata o tempo (mm:ss)
 function formatTime(seconds) {
     const minutes = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -226,12 +217,17 @@ audioPlayer.addEventListener('ended', () => {
 });
 
 audioPlayer.addEventListener('play', () => {
+    playPauseBtn.innerHTML = PAUSE_ICON;
     highlightCurrentSong();
     const song = songs[currentSongIndex];
     const baseName = song.replace('.mp3', '');
     nowPlayingTitle.textContent = baseName;
     nowPlayingArtist.textContent = 'Matheus Galvão';
     loadAlbumCover(baseName);
+});
+
+audioPlayer.addEventListener('pause', () => {
+    playPauseBtn.innerHTML = PLAY_ICON;
 });
 
 progressBar.addEventListener('input', () => {
@@ -241,45 +237,39 @@ progressBar.addEventListener('input', () => {
 });
 
 playPauseBtn.addEventListener('click', (e) => {
-    e.preventDefault(); // Impede comportamentos padrão
+    e.preventDefault();
     
     if (audioPlayer.paused) {
         audioPlayer.play();
-        playPauseBtn.innerHTML = '<span style="font-size:24px">⏸</span>';
     } else {
         audioPlayer.pause();
-        playPauseBtn.innerHTML = '<span style="font-size:24px">▶</span>';
     }
     
-    // Força repaint para evitar artefatos visuais
-    playPauseBtn.style.transform = 'scale(0.98)';
+    // Efeito de clique
+    playPauseBtn.style.transform = 'scale(0.95)';
     setTimeout(() => {
         playPauseBtn.style.transform = 'scale(1)';
     }, 100);
-
-    // No JavaScript, substitua os emojis por:
-playPauseBtn.innerHTML = `
-    <svg viewBox="0 0 24 24" width="24" height="24">
-        <path fill="currentColor" d="M8 5v14l11-7z"/>
-    </svg>
-`;
-// E para pause:
-playPauseBtn.innerHTML = `
-    <svg viewBox="0 0 24 24" width="24" height="24">
-        <path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-    </svg>
-`;
 });
 
-document.getElementById('prevBtn').onclick = () => {
+document.getElementById('prevBtn').addEventListener('click', () => {
     const prevIndex = (currentSongIndex - 1 + songs.length) % songs.length;
     playSong(prevIndex);
-};
+});
 
-document.getElementById('nextBtn').onclick = () => {
+document.getElementById('nextBtn').addEventListener('click', () => {
     const nextIndex = (currentSongIndex + 1) % songs.length;
     playSong(nextIndex);
-};
+});
+
+// Melhora a resposta tátil nos botões
+document.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('touchstart', () => btn.style.transform = 'scale(0.95)');
+    btn.addEventListener('touchend', () => btn.style.transform = 'scale(1)');
+});
+
+// Previne o zoom indesejado com toque duplo
+document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
 
 // Inicia o player
 loadSongs();
