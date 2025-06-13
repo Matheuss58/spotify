@@ -1,0 +1,273 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #121212;
+    color: #ffffff;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.title {
+    color: #1DB954;
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-align: center;
+}
+
+.player {
+    background-color: #181818;
+    border-radius: 10px;
+    width: 350px;
+    padding: 25px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    margin-bottom: 20px;
+}
+
+#playlist {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 25px 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+#playlist::-webkit-scrollbar {
+    width: 8px;
+}
+
+#playlist::-webkit-scrollbar-track {
+    background: #282828;
+    border-radius: 10px;
+}
+
+#playlist::-webkit-scrollbar-thumb {
+    background: #535353;
+    border-radius: 10px;
+}
+
+#playlist li {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 8px;
+    background-color: #282828;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+#playlist li:hover {
+    background-color: #383838;
+}
+
+#playlist li.current {
+    background-color: #1DB95433;
+    border-left: 3px solid #1DB954;
+}
+
+.album-cover, .now-playing-cover {
+    width: 50px;
+    height: 50px;
+    border-radius: 5px;
+    margin-right: 15px;
+    background-color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.album-cover img, .now-playing-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.song-info, .now-playing-text {
+    flex: 1;
+}
+
+.song-title, .now-playing-title {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.song-artist, .now-playing-artist {
+    font-size: 12px;
+    color: #b3b3b3;
+}
+
+.now-playing-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.player-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 25px;
+    margin-top: 20px;
+}
+
+.player-controls button {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+#playPauseBtn {
+    background-color: #1DB954;
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    font-size: 18px;
+}
+
+#playPauseBtn:hover {
+    background-color: #1ed760;
+    transform: scale(1.05);
+}
+
+#prevBtn, #nextBtn {
+    font-size: 22px;
+    opacity: 0.8;
+    width: 30px;
+    height: 30px;
+}
+
+#prevBtn:hover, #nextBtn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.audio-container {
+    display: none;
+}
+
+.now-playing {
+    background-color: #282828;
+    border-radius: 8px;
+    padding: 15px 20px;
+    margin: 20px auto;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.now-playing-info {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 10px;
+    position: relative;
+}
+
+#shuffleBtn {
+    position: absolute;
+    right: 0;
+    background: none;
+    border: none;
+    color: #b3b3b3;
+    cursor: pointer;
+    padding: 8px;
+    width: 30px;
+    height: 30px;
+    transition: all 0.2s ease;
+}
+
+#shuffleBtn.active {
+    color: #1DB954;
+}
+
+#shuffleBtn:hover {
+    color: #ffffff;
+    transform: scale(1.1);
+}
+
+.progress-container {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.time-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: #b3b3b3;
+}
+
+.progress-wrapper {
+    position: relative;
+    width: 100%;
+    height: 20px;
+    display: flex;
+    align-items: center;
+}
+
+.progress-background {
+    position: absolute;
+    width: 100%;
+    height: 4px;
+    background: #535353;
+    border-radius: 2px;
+}
+
+.progress-fill {
+    position: absolute;
+    height: 4px;
+    background: #1DB954;
+    border-radius: 2px;
+    width: var(--progress, 0%);
+}
+
+.progress-bar {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    position: relative;
+    z-index: 2;
+    cursor: pointer;
+    margin: 0;
+    padding: 0;
+}
+
+.progress-bar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 5px rgba(0,0,0,0.2);
+    transition: all 0.1s ease;
+}
+
+.progress-bar::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+/* Adicione isso ao seu arquivo CSS */
+#playlist {
+    scroll-behavior: smooth; /* Suaviza a rolagem */
+    overscroll-behavior: contain; /* Evita efeitos de rolagem indesejados */
+}
+
+#playlist li {
+    scroll-margin: 10px; /* Espaço ao redor do item durante a rolagem */
+}
