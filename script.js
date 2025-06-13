@@ -256,6 +256,19 @@ playPauseBtn.addEventListener('click', (e) => {
     setTimeout(() => {
         playPauseBtn.style.transform = 'scale(1)';
     }, 100);
+
+    // No JavaScript, substitua os emojis por:
+playPauseBtn.innerHTML = `
+    <svg viewBox="0 0 24 24" width="24" height="24">
+        <path fill="currentColor" d="M8 5v14l11-7z"/>
+    </svg>
+`;
+// E para pause:
+playPauseBtn.innerHTML = `
+    <svg viewBox="0 0 24 24" width="24" height="24">
+        <path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+    </svg>
+`;
 });
 
 document.getElementById('prevBtn').onclick = () => {
