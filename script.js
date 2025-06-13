@@ -241,15 +241,21 @@ progressBar.addEventListener('input', () => {
 });
 
 playPauseBtn.addEventListener('click', (e) => {
-    e.stopPropagation(); // Impede efeitos indesejados no mobile
+    e.preventDefault(); // Impede comportamentos padrão
     
     if (audioPlayer.paused) {
         audioPlayer.play();
-        playPauseBtn.innerHTML = '⏸'; // Usar innerHTML em vez de textContent
+        playPauseBtn.innerHTML = '<span style="font-size:24px">⏸</span>';
     } else {
         audioPlayer.pause();
-        playPauseBtn.innerHTML = '▶';
+        playPauseBtn.innerHTML = '<span style="font-size:24px">▶</span>';
     }
+    
+    // Força repaint para evitar artefatos visuais
+    playPauseBtn.style.transform = 'scale(0.98)';
+    setTimeout(() => {
+        playPauseBtn.style.transform = 'scale(1)';
+    }, 100);
 });
 
 document.getElementById('prevBtn').onclick = () => {

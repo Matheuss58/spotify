@@ -145,6 +145,7 @@ body {
 }
 
 #playPauseBtn {
+    /* Mantenha suas regras atuais */
     background-color: #1DB954;
     border-radius: 50%;
     width: 50px;
@@ -157,7 +158,17 @@ body {
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
-    appearance: none;
+    
+    /* Novas regras para corrigir o problema */
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    outline: none;
+}
+
+/* Remover highlight no iOS/Safari */
+#playPauseBtn::-webkit-media-controls-play-button {
+    display: none !important;
+    -webkit-appearance: none;
 }
 
 #playPauseBtn:hover {
