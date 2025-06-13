@@ -313,3 +313,19 @@ body {
         background-color: #1ED760 !important;
     }
 }
+
+/* AUMENTA BOTÕES DE NAVEGAÇÃO */
+#prevBtn, #nextBtn {
+    font-size: 28px !important;       /* Tamanho aumentado */
+    width: 40px !important;           /* Largura */
+    height: 40px !important;          /* Altura */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+/* Efeito ao pressionar */
+#prevBtn:active, #nextBtn:active {
+    transform: scale(0.9);          /* Efeito de clique */
+}
