@@ -9,6 +9,22 @@ const nowPlayingArtist = document.getElementById('nowPlayingArtist');
 const nowPlayingCover = document.getElementById('nowPlayingCover');
 const shuffleBtn = document.getElementById('shuffleBtn');
 
+// Melhora a resposta tátil nos botões
+const buttons = document.querySelectorAll('button');
+buttons.forEach(btn => {
+    btn.addEventListener('touchstart', () => {
+        btn.style.transform = 'scale(0.95)';
+    });
+    btn.addEventListener('touchend', () => {
+        btn.style.transform = 'scale(1)';
+    });
+});
+
+// Previne o zoom indesejado com toque duplo
+document.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+
+}, { passive: false });
 let isShuffleMode = false;
 let currentSongIndex = 0;
 const songs = [
@@ -224,13 +240,15 @@ progressBar.addEventListener('input', () => {
     document.getElementById('progressFill').style.width = `${progressBar.value}%`;
 });
 
-playPauseBtn.addEventListener('click', () => {
+playPauseBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); // Impede efeitos indesejados no mobile
+    
     if (audioPlayer.paused) {
         audioPlayer.play();
-        playPauseBtn.textContent = '⏸';
+        playPauseBtn.innerHTML = '⏸'; // Usar innerHTML em vez de textContent
     } else {
         audioPlayer.pause();
-        playPauseBtn.textContent = '▶';
+        playPauseBtn.innerHTML = '▶';
     }
 });
 
