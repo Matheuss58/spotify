@@ -1,11 +1,21 @@
 /* Reset e Base */
 * {
+    margin: 0;
+    padding: 0;
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+html, body {
+    height: 100%;
+    overflow-x: hidden;
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     background-color: #121212;
     color: #ffffff;
     margin: 0;
@@ -13,26 +23,35 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-height: 100vh;
     touch-action: manipulation;
+    -webkit-font-smoothing: antialiased;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 /* Título */
 .title {
     color: #1DB954;
-    font-size: clamp(1.5rem, 6vw, 2.5rem);
-    margin-bottom: 15px;
+    font-size: clamp(1.5rem, 6vw, 2rem);
+    margin: 10px 0 20px;
     text-transform: uppercase;
     letter-spacing: 1px;
     text-align: center;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 /* Player Principal */
 .player {
     background-color: #181818;
-    border-radius: 10px;
+    border-radius: 12px;
     width: 100%;
-    max-width: 400px;
     padding: 15px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     margin-bottom: 15px;
@@ -42,48 +61,57 @@ body {
 #playlist {
     list-style: none;
     padding: 0;
-    padding-right: 17px; /* Aumente esse valor se quiser mais espaço */
     margin: 0 0 15px 0;
     max-height: 40vh;
     overflow-y: auto;
     scroll-behavior: smooth;
+    width: 100%;
 }
 
 #playlist::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
 }
 
 #playlist::-webkit-scrollbar-track {
     background: #282828;
-    border-radius: 10px;
+    border-radius: 3px;
 }
 
 #playlist::-webkit-scrollbar-thumb {
     background: #535353;
-    border-radius: 10px;
+    border-radius: 3px;
 }
 
 #playlist li {
     display: flex;
     align-items: center;
-    padding: 10px;
-    border-radius: 5px;
+    padding: 12px 10px;
+    border-radius: 6px;
     margin-bottom: 8px;
-    background-color: none;
+    background-color: transparent;
     transition: all 0.2s ease;
     cursor: pointer;
     scroll-margin: 10px;
 }
 
 #playlist li:hover {
-    background-color: #383838;
+    background-color: #282828;
 }
 
 #playlist li.current {
-    background-color: #1DB95433;
+    background-color: rgba(29, 185, 84, 0.15);
     border-left: 3px solid #1DB954;
 }
 
+#playlist li.not-cached {
+    opacity: 0.6;
+}
+
+#playlist li.not-cached .song-title::after {
+    content: " (offline)";
+    font-size: 0.8em;
+    color: #ff9800;
+}
 
 /* Capas dos Álbuns */
 .album-cover, .now-playing-cover {
@@ -92,11 +120,12 @@ body {
     min-width: 50px;
     border-radius: 5px;
     margin-right: 12px;
-    background-color: #333;
+    background-color: #282828;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .album-cover img, .now-playing-cover img {
@@ -105,21 +134,31 @@ body {
     object-fit: cover;
 }
 
+.cover-placeholder {
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
 .song-info, .now-playing-text {
     flex: 1;
+    min-width: 0;
 }
 
 .song-title, .now-playing-title {
     font-weight: 600;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
     white-space: nowrap;
     overflow: hidden;
-    scroll-margin: 10px;
     text-overflow: ellipsis;
+    font-size: 15px;
 }
 
 .song-artist, .now-playing-artist {
-    font-size: 12px;
+    font-size: 13px;
     color: #b3b3b3;
 }
 
@@ -129,24 +168,42 @@ body {
     justify-content: center;
     align-items: center;
     gap: 20px;
-    margin: 15px 0;
+    margin: 20px 0;
+    touch-action: manipulation;
+    width: 100%;
 }
 
 #playPauseBtn {
     background-color: #1DB954;
     border-radius: 50%;
-    width: 50px;
-    height: 50px;
+    width: 60px;
+    height: 60px;
     border: none;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
-    outline: none;
     padding: 0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+#playPauseBtn::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+#playPauseBtn:active::after {
+    opacity: 1;
 }
 
 #playPauseBtn svg {
@@ -155,41 +212,60 @@ body {
     display: block;
 }
 
-#playPauseBtn:hover {
-    background-color: #1ed760;
-    transform: scale(1.05);
-}
-
 #prevBtn, #nextBtn {
-    font-size: 22px;
-    opacity: 0.8;
-    width: 30px;
-    height: 30px;
-    background: none;
+    font-size: 28px;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
     border: none;
     color: white;
     cursor: pointer;
+    padding: 0;
+    transition: transform 0.2s;
+    position: relative;
 }
 
-#prevBtn:hover, #nextBtn:hover {
+#prevBtn:active, #nextBtn:active {
+    transform: scale(0.85);
     opacity: 1;
-    transform: scale(1.1);
 }
 
 /* Now Playing */
 .now-playing {
     background-color: #282828;
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 15px;
     margin: 15px 0;
     width: 100%;
-    max-width: 400px;
 }
 
 .now-playing-info {
     display: flex;
     align-items: center;
     gap: 12px;
+    margin-bottom: 12px;
+}
+
+.now-playing-cover {
+    width: 60px;
+    height: 60px;
+}
+
+.now-playing-text {
+    flex: 1;
+    overflow: hidden;
+}
+
+.now-playing-title {
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.now-playing-artist {
+    font-size: 14px;
 }
 
 #shuffleBtn {
@@ -198,35 +274,40 @@ body {
     color: #b3b3b3;
     cursor: pointer;
     padding: 8px;
-    transition: all 0.2s ease;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
 }
 
 #shuffleBtn.active {
     color: #1DB954;
+    background-color: rgba(29, 185, 84, 0.1);
 }
 
-#shuffleBtn:hover {
-    color: #ffffff;
-    transform: scale(1.1);
+#shuffleBtn:active {
+    transform: scale(0.9);
 }
 
 /* Barra de Progresso */
 .progress-container {
     width: 100%;
-    margin-top: 10px;
 }
 
 .time-info {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 11px;
+    font-size: 12px;
     color: #b3b3b3;
 }
 
 .progress-wrapper {
     position: relative;
-    width: 100%;
+    flex: 1;
     height: 20px;
     display: flex;
     align-items: center;
@@ -251,7 +332,6 @@ body {
 
 .progress-bar {
     -webkit-appearance: none;
-    -moz-appearance: none;
     appearance: none;
     width: 100%;
     height: 100%;
@@ -265,18 +345,80 @@ body {
 
 .progress-bar::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
     background: #fff;
     border-radius: 50%;
     cursor: pointer;
     transition: all 0.1s ease;
 }
 
-/* Media Queries para Telas Pequenas */
-@media (max-width: 480px) {
-    body {
-        padding: 10px;
+.progress-bar::-webkit-slider-thumb:active {
+    transform: scale(1.2);
+}
+
+/* Botão de instalação */
+.install-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: none;
+}
+
+.install-button {
+    padding: 12px 18px;
+    background-color: #1DB954;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.install-button:hover {
+    background-color: #1ed760;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+}
+
+.install-button:active {
+    transform: translateY(0) scale(0.95);
+}
+
+/* Mensagem offline */
+#offline-message {
+    animation: fadeIn 0.3s ease-in-out;
+    position: fixed;
+    bottom: 80px;
+    left: 20px;
+    right: 20px;
+    background-color: #ff9800;
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    z-index: 1000;
+    text-align: center;
+    font-size: 14px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Ajustes para telas pequenas (Moto G8) */
+@media (max-width: 360px) {
+    .title {
+        font-size: 1.3rem;
+        margin: 5px 0 15px;
     }
     
     .player {
@@ -284,172 +426,12 @@ body {
     }
     
     #playlist li {
-        padding: 8px;
+        padding: 10px 8px;
     }
     
     .player-controls {
-        gap: 15px;
-    }
-    
-    #playPauseBtn {
-        width: 45px;
-        height: 45px;
-    }
-    
-    #playPauseBtn svg {
-        width: 20px;
-        height: 20px;
-    }
-}
-
-/* Remover highlight no iOS/Safari */
-@supports (-webkit-touch-callout: none) {
-    #playPauseBtn {
-        -webkit-tap-highlight-color: rgba(0,0,0,0);
-        position: relative;
-        overflow: hidden;
-    }
-    #playPauseBtn:active {
-        background-color: #1ED760 !important;
-    }
-}
-
-/* Botões de navegação */
-#prevBtn, #nextBtn {
-    font-size: 28px;
-    width: 50px;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 5px;
-    background: transparent;
-    border: none;
-    color: white;
-    cursor: pointer;
-    padding: 0;
-    transition: transform 0.2s;
-}
-
-/* Botão shuffle */
-#shuffleBtn {
-    background: none;
-    border: none;
-    color: #b3b3b3;
-    cursor: pointer;
-    padding: 8px;
-    transition: all 0.2s;
-}
-
-#shuffleBtn.active {
-    color: #1DB954;
-}
-
-#shuffleBtn:hover, #shuffleBtn:active {
-    transform: scale(1.1);
-}
-
-/* Efeitos de toque */
-button {
-    transition: transform 0.1s;
-    -webkit-tap-highlight-color: transparent;
-}
-
-/* Para desktop */
-@media (min-width: 768px) {
-    #prevBtn, #nextBtn {
-        width: 40px;
-        height: 40px;
-        font-size: 24px;
-    }
-}
-
-/* CONTROLES PRINCIPAIS - MOBILE FIRST */
-.player-controls {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 15px;
-    margin: 20px 0;
-    touch-action: manipulation;
-}
-
-/* Botão Play/Pause */
-#playPauseBtn {
-    background-color: #1DB954;
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
-    padding: 0;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-#playPauseBtn svg {
-    width: 26px;
-    height: 26px;
-    display: block;
-}
-
-#playPauseBtn:active {
-    transform: scale(0.95);
-    background-color: #1ed760;
-}
-
-/* Botões Anterior/Próximo */
-#prevBtn, #nextBtn {
-    font-size: 30px;
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    color: white;
-    cursor: pointer;
-    padding: 0;
-    transition: transform 0.2s;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-}
-
-#prevBtn:active, #nextBtn:active {
-    transform: scale(0.85);
-    opacity: 1;
-}
-
-/* Botão Shuffle */
-#shuffleBtn {
-    background: none;
-    border: none;
-    color: #b3b3b3;
-    cursor: pointer;
-    padding: 10px;
-    transition: all 0.2s;
-    -webkit-tap-highlight-color: transparent;
-    font-size: 20px;
-}
-
-#shuffleBtn.active {
-    color: #1DB954;
-}
-
-#shuffleBtn:active {
-    transform: scale(0.9);
-}
-
-/* PARA DISPOSITIVOS MAIORES */
-@media (min-width: 768px) {
-    .player-controls {
-        gap: 25px;
+        gap: 12px;
+        margin: 15px 0;
     }
     
     #playPauseBtn {
@@ -458,61 +440,59 @@ button {
     }
     
     #playPauseBtn svg {
-        width: 22px;
-        height: 22px;
+        width: 20px;
+        height: 20px;
     }
     
     #prevBtn, #nextBtn {
-        font-size: 24px;
         width: 40px;
         height: 40px;
+        font-size: 22px;
     }
     
-    #shuffleBtn {
-        font-size: 18px;
+    .now-playing {
+        padding: 12px;
+    }
+    
+    .now-playing-cover {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .now-playing-title {
+        font-size: 15px;
+    }
+    
+    .now-playing-artist {
+        font-size: 13px;
+    }
+    
+    .install-button {
+        padding: 10px 15px;
+        font-size: 13px;
     }
 }
-/* Estilo para modo offline */
-body.offline #playlist li:not(.cached) {
-  opacity: 0.6;
+
+/* Ajustes para modo standalone (PWA) */
+@media all and (display-mode: standalone) {
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    .install-container {
+        display: none !important;
+    }
 }
 
-body.offline #playlist li:not(.cached) .song-title::after {
-  content: " (não disponível offline)";
-  font-size: 0.8em;
-  color: #ff9800;
-}
-
-#offline-message {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Botão de instalação PWA */
-#installButton {
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(29, 185, 84, 0.7);
-  }
-  70% {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 10px rgba(29, 185, 84, 0);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(29, 185, 84, 0);
-  }
-}
-
-/* Esconde o botão quando já instalado */
-body.standalone #installButton {
-  display: none !important;
+/* Melhorias para iOS */
+@supports (-webkit-touch-callout: none) {
+    body {
+        padding-bottom: constant(safe-area-inset-bottom);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    #playPauseBtn:active {
+        transform: scale(0.95);
+    }
 }

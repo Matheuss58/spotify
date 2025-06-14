@@ -1,20 +1,38 @@
 {
   "name": "Spotify Free",
   "short_name": "Spotify",
+  "description": "Player de música gratuito",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#1DB954",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "icon-192.png",
+      "type": "image/png",
       "sizes": "192x192",
-      "type": "image/png"
+      "purpose": "any maskable"
     },
     {
       "src": "icon-512.png",
+      "type": "image/png",
       "sizes": "512x512",
-      "type": "image/png"
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-144.png",
+      "type": "image/png",
+      "sizes": "144x144"
+    }
+  ],
+  "prefer_related_applications": false,
+  "categories": ["music", "entertainment"],
+  "screenshots": [
+    {
+      "src": "screenshot1.png",
+      "type": "image/png",
+      "sizes": "1080x1920"
     }
   ]
 }

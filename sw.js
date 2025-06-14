@@ -1,4 +1,4 @@
-const CACHE_NAME = 'musicas-offline-v4';
+const CACHE_NAME = 'spotify-free-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -6,11 +6,10 @@ const ASSETS_TO_CACHE = [
   '/script.js',
   '/icon-192.png',
   '/icon-512.png',
-  '/manifest.json',
-  // Adicione outros recursos estáticos necessários
+  '/manifest.json'
 ];
 
-// Extensões de arquivo para cachear automaticamente
+// Extensões para cache automático
 const CACHEABLE_EXTENSIONS = [
   '.mp3',
   '.jpg',
@@ -20,21 +19,25 @@ const CACHEABLE_EXTENSIONS = [
   '.gif'
 ];
 
-// Tamanho máximo do cache (em MB)
-const MAX_CACHE_SIZE = 500; // 500MB
+// Taman
+
+// Tamanho máximo do cache (500MB)
+const MAX_CACHE_SIZE = 500 * 1024 * 1024;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
+        console.log('Cache aberto, adicionando recursos estáticos');
         return cache.addAll(ASSETS_TO_CACHE)
           .then(() => {
-            console.log('Recursos essenciais cacheados com sucesso');
+            console.log('Todos os recursos essenciais foram cacheados');
             return self.skipWaiting();
-          })
-          .catch((error) => {
-            console.log('Falha ao cachear recursos essenciais:', error);
           });
+      })
+      .catch((error) => {
+        console.error('Falha ao cachear recursos essenciais:', error);
+        throw error;
       })
   );
 });
@@ -50,145 +53,182 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => {
-      console.log('Service Worker ativado e pronto para controlar clientes');
+    })
+    .then(() => {
+      console.log('Service Worker ativado com sucesso');
       return self.clients.claim();
     })
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  const requestUrl = new URL(event.request.url);
+  const request = event.request;
+  const requestUrl = new URL(request.url);
   
-  // Ignora requisições não GET e de outras origens
-  if (event.request.method !== 'GET' || requestUrl.origin !== self.location.origin) {
+  // Ignora requisições não-GET e de outras origens
+  if (request.method !== 'GET' || requestUrl.origin !== self.location.origin) {
     return;
   }
 
-  // Verifica se é um arquivo de música ou imagem
+  // Verifica se é um arquivo de mídia
   const isMediaFile = CACHEABLE_EXTENSIONS.some(ext => 
     requestUrl.pathname.endsWith(ext)
   );
 
   if (isMediaFile) {
-    event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        // Retorna do cache se existir
-        if (cachedResponse) {
-          console.log('Retornando do cache:', requestUrl.pathname);
-          return cachedResponse;
-        }
-
-        // Se não estiver no cache, faz a requisição
-        return fetch(event.request).then((networkResponse) => {
-          // Verifica se a resposta é válida
-          if (!networkResponse || networkResponse.status !== 200 || 
-              networkResponse.type !== 'basic') {
-            return networkResponse;
-          }
-
-          // Clona a resposta para armazenar no cache
-          const responseToCache = networkResponse.clone();
-          
-          caches.open(CACHE_NAME).then((cache) => {
-            // Verifica o tamanho do cache antes de adicionar
-            cache.put(event.request, responseToCache).then(() => {
-              console.log('Arquivo armazenado no cache:', requestUrl.pathname);
-              return cleanCacheIfNeeded();
-            });
-          });
-
-          return networkResponse;
-        }).catch((error) => {
-          console.log('Erro ao buscar recurso:', error);
-          // Pode retornar uma resposta alternativa aqui se desejar
-          return new Response(JSON.stringify({
-            error: 'Você está offline e este recurso não está disponível'
-          }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        });
-      })
-    );
+    handleMediaRequest(event, request);
   } else {
-    // Para outros recursos (HTML, CSS, JS), usa estratégia Cache First
-    event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        return cachedResponse || fetch(event.request).then((response) => {
-          return response;
-        });
-      })
-    );
+    handleCoreRequest(event, request);
   }
 });
 
-// Função para limpar o cache se exceder o tamanho máximo
+async function handleMediaRequest(event, request) {
+  try {
+    // Primeiro tenta buscar no cache
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) {
+      console.log('Retornando do cache:', request.url);
+      return event.respondWith(cachedResponse);
+    }
+
+    // Se não estiver no cache, faz a requisição de rede
+    const networkResponse = await fetch(request);
+    
+    // Verifica se a resposta é válida
+    if (!networkResponse || networkResponse.status !== 200 || 
+        networkResponse.type !== 'basic') {
+      return event.respondWith(networkResponse);
+    }
+
+    // Clona a resposta para armazenar no cache
+    const responseToCache = networkResponse.clone();
+    
+    // Adiciona ao cache e limpa se necessário
+    await addToCache(request, responseToCache);
+    
+    return event.respondWith(networkResponse);
+    
+  } catch (error) {
+    console.error('Erro ao processar requisição de mídia:', error);
+    return event.respondWith(
+      new Response(JSON.stringify({
+        error: 'Recurso não disponível offline'
+      }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    );
+  }
+}
+
+async function handleCoreRequest(event, request) {
+  try {
+    // Estratégia Cache First para recursos principais
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) {
+      return event.respondWith(cachedResponse);
+    }
+    
+    const networkResponse = await fetch(request);
+    return event.respondWith(networkResponse);
+    
+  } catch (error) {
+    console.error('Erro ao processar requisição principal:', error);
+    
+    // Fallback para a página principal se for uma requisição HTML
+    if (request.headers.get('accept').includes('text/html')) {
+      const fallbackResponse = await caches.match('/index.html');
+      if (fallbackResponse) {
+        return event.respondWith(fallbackResponse);
+      }
+    }
+    
+    return event.respondWith(new Response('Offline', { status: 503 }));
+  }
+}
+
+async function addToCache(request, response) {
+  const cache = await caches.open(CACHE_NAME);
+  await cache.put(request, response);
+  console.log('Recurso armazenado no cache:', request.url);
+  
+  // Verifica o tamanho do cache periodicamente
+  await cleanCacheIfNeeded();
+}
+
 async function cleanCacheIfNeeded() {
   const cache = await caches.open(CACHE_NAME);
-  const keys = await cache.keys();
+  const requests = await cache.keys();
   
-  // Verifica o tamanho total do cache
   let totalSize = 0;
   const entries = [];
   
-  for (const request of keys) {
+  // Calcula o tamanho total do cache
+  for (const request of requests) {
     const response = await cache.match(request);
     if (response) {
       const contentLength = response.headers.get('content-length');
       const size = contentLength ? parseInt(contentLength) : 0;
       totalSize += size;
-      entries.push({
-        request,
-        response,
-        size,
-        lastUsed: await getLastUsed(request.url)
-      });
+      entries.push({ request, size });
     }
   }
   
-  // Se o cache exceder o tamanho máximo, remove os itens mais antigos
-  if (totalSize > MAX_CACHE_SIZE * 1024 * 1024) {
-    console.log(`Cache excedeu ${MAX_CACHE_SIZE}MB, limpando...`);
+  // Limpa o cache se exceder o tamanho máximo
+  if (totalSize > MAX_CACHE_SIZE) {
+    console.log(`Cache excedeu o limite (${MAX_CACHE_SIZE} bytes), limpando...`);
     
-    // Ordena por último uso (os mais antigos primeiro)
-    entries.sort((a, b) => a.lastUsed - b.lastUsed);
+    // Ordena por tamanho (maiores primeiro)
+    entries.sort((a, b) => b.size - a.size);
     
     let cleanedSize = 0;
-    const targetSize = totalSize - (MAX_CACHE_SIZE * 1024 * 1024 * 0.8); // Limpa até 80% do máximo
+    const targetSize = totalSize - (MAX_CACHE_SIZE * 0.8); // Limpa até 80% do máximo
     
     for (const entry of entries) {
       if (cleanedSize >= targetSize) break;
       
       await cache.delete(entry.request);
       cleanedSize += entry.size;
-      console.log('Removido do cache:', entry.request.url);
+      console.log(`Removido: ${entry.request.url} (${entry.size} bytes)`);
     }
     
-    console.log(`Limpados ${cleanedSize / (1024 * 1024)}MB do cache`);
+    console.log(`Total limpo: ${cleanedSize} bytes`);
   }
 }
 
-// Função auxiliar para obter o último uso de um recurso
-async function getLastUsed(url) {
-  // Você pode implementar um sistema mais sofisticado aqui
-  // usando IndexedDB para rastrear quando cada recurso foi acessado
-  return 0; // Implementação simplificada
-}
-
-// Mensagens do Service Worker
-self.addEventListener('message', (event) => {
-  if (event.data.action === 'cleanCache') {
-    cleanCacheIfNeeded();
-  } else if (event.data.action === 'cacheSong') {
-    const songUrl = event.data.url;
-    caches.open(CACHE_NAME).then(cache => {
-      fetch(songUrl).then(response => {
+self.addEventListener('message', async (event) => {
+  switch (event.data.action) {
+    case 'cleanCache':
+      await cleanCacheIfNeeded();
+      break;
+      
+    case 'cacheSong':
+      try {
+        const { url } = event.data;
+        const cache = await caches.open(CACHE_NAME);
+        const response = await fetch(url);
+        
         if (response.ok) {
-          cache.put(songUrl, response.clone());
-          console.log('Música cacheadada manualmente:', songUrl);
+          await cache.put(url, response.clone());
+          console.log(`Música cacheadada manualmente: ${url}`);
+          event.ports[0].postMessage({ success: true });
+        } else {
+          throw new Error('Resposta não OK');
         }
-      });
-    });
+      } catch (error) {
+        console.error('Erro ao cachear música:', error);
+        event.ports[0].postMessage({ success: false, error: error.message });
+      }
+      break;
+      
+    case 'getCacheStatus':
+      const cache = await caches.open(CACHE_NAME);
+      const requests = await cache.keys();
+      const cachedSongs = requests
+        .filter(req => req.url.includes('musicas/'))
+        .map(req => req.url);
+      
+      event.ports[0].postMessage({ cachedSongs });
+      break;
   }
 });
