@@ -402,3 +402,23 @@ button {
     color: #1DB954 !important;
     transform: scale(1.1) !important;
 }
+
+/* Estilo para modo offline */
+body.offline #playlist li:not(.cached) {
+  opacity: 0.6;
+}
+
+body.offline #playlist li:not(.cached) .song-title::after {
+  content: " (não disponível offline)";
+  font-size: 0.8em;
+  color: #ff9800;
+}
+
+#offline-message {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

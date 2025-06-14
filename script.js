@@ -9,6 +9,9 @@ const nowPlayingArtist = document.getElementById('nowPlayingArtist');
 const nowPlayingCover = document.getElementById('nowPlayingCover');
 const shuffleBtn = document.getElementById('shuffleBtn');
 
+// Nome do cache para armazenamento offline
+const CACHE_NAME = 'musicas-offline-v1';
+
 // Ícones SVG para play/pause
 const PLAY_ICON = `
     <svg viewBox="0 0 24 24" width="24" height="24">
@@ -58,17 +61,63 @@ function loadSongs() {
 }
 
 // Função para tocar uma música específica
-function playSong(index) {
+async function playSong(index) {
     if (index >= 0 && index < songs.length) {
         currentSongIndex = index;
         const song = songs[index];
         const baseName = song.replace('.mp3', '');
-    
+        
         updateNowPlayingUI(baseName);
         
-        audioPlayer.src = `musicas/${song}`;
-        audioPlayer.load();
-        audioPlayer.play().catch(e => console.error("Erro ao reproduzir:", e));
+        const songUrl = `musicas/${song}`;
+        
+        // Verifica se está offline e se a música está no cache
+        if (!navigator.onLine) {
+            try {
+                const cache = await caches.open(CACHE_NAME);
+                const response = await cache.match(songUrl);
+                
+                if (response) {
+                    const blob = await response.blob();
+                    audioPlayer.src = URL.createObjectURL(blob);
+                    audioPlayer.play().catch(e => console.error("Erro ao reproduzir offline:", e));
+                } else {
+                    alert('Esta música não está disponível offline.');
+                    // Marca a música como não disponível
+                    const items = playlistElement.getElementsByTagName('li');
+                    if (items[index]) {
+                        items[index].classList.add('not-cached');
+                    }
+                    return;
+                }
+            } catch (error) {
+                console.error("Erro ao acessar cache:", error);
+                alert('Erro ao carregar música offline.');
+                return;
+            }
+        } else {
+            // Online - comportamento normal
+            audioPlayer.src = songUrl;
+            audioPlayer.load();
+            audioPlayer.play().catch(e => console.error("Erro ao reproduzir:", e));
+            
+            // Armazena no cache para uso futuro offline
+            cacheSong(songUrl);
+        }
+    }
+}
+
+// Armazena uma música no cache
+async function cacheSong(songUrl) {
+    try {
+        const response = await fetch(songUrl);
+        if (response.ok) {
+            const clone = response.clone();
+            const cache = await caches.open(CACHE_NAME);
+            await cache.put(songUrl, clone);
+        }
+    } catch (error) {
+        console.error("Erro ao armazenar música no cache:", error);
     }
 }
 
@@ -80,10 +129,16 @@ function updateNowPlayingUI(baseName) {
     highlightCurrentSong();
 }
 
-// Carrega a capa do álbum
 function loadAlbumCover(baseName) {
+    // Limpa o conteúdo atual
     nowPlayingCover.innerHTML = '';
+    
     const img = document.createElement('img');
+    img.alt = `Capa de ${baseName}`;
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'cover';
+    img.style.borderRadius = '5px';
     
     const extensions = ['jpeg', 'jpg', 'png', 'gif', 'webp', 'avif'];
     let currentExtensionIndex = 0;
@@ -93,6 +148,7 @@ function loadAlbumCover(baseName) {
             const ext = extensions[currentExtensionIndex++];
             img.src = `musicas/covers/${baseName}.${ext}?${Date.now()}`;
         } else {
+            // Fallback quando nenhuma imagem é encontrada
             nowPlayingCover.innerHTML = '🎵';
             nowPlayingCover.style.fontSize = '24px';
             nowPlayingCover.style.display = 'flex';
@@ -101,21 +157,18 @@ function loadAlbumCover(baseName) {
         }
     }
     
-    img.alt = `Capa de ${baseName}`;
-    img.style.width = '100%';
-    img.style.height = '100%';
-    img.style.objectFit = 'cover';
-    img.style.borderRadius = '5px';
-    
+    // Configura os event listeners
     img.onload = () => {
+        // Remove qualquer conteúdo fallback que possa existir
         nowPlayingCover.innerHTML = '';
         nowPlayingCover.appendChild(img);
     };
+    
     img.onerror = tryNextExtension;
     
+    // Inicia o processo de tentar carregar a imagem
     tryNextExtension();
 }
-
 // Renderiza a lista de músicas
 function renderPlaylist() {
     playlistElement.innerHTML = '';
@@ -290,7 +343,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     deferredPrompt = e;
     
     if (!window.matchMedia('(display-mode: standalone)').matches) {
-        showInstallButton();
+        showInstallButton(true);
     }
 });
 
@@ -302,14 +355,16 @@ window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
 });
 
-function showInstallButton() {
+function showInstallButton(supportsOffline = false) {
     if (document.getElementById('installPWAButton')) {
         return;
     }
 
     const installBtn = document.createElement('button');
     installBtn.id = 'installPWAButton';
-    installBtn.textContent = 'Instalar App';
+    installBtn.innerHTML = supportsOffline 
+        ? '📲 Instalar App (funciona offline)' 
+        : '📲 Instalar App';
     installBtn.style.position = 'fixed';
     installBtn.style.bottom = '20px';
     installBtn.style.right = '20px';
@@ -339,5 +394,95 @@ function showInstallButton() {
     document.body.appendChild(installBtn);
 }
 
-// Inicia o player
-loadSongs();
+// Verifica suporte offline e atualiza a UI
+function updateOnlineStatus() {
+    if (navigator.onLine) {
+        console.log('Online');
+        document.body.classList.remove('offline');
+    } else {
+        console.log('Offline');
+        document.body.classList.add('offline');
+        showOfflineMessage();
+    }
+}
+
+function showOfflineMessage() {
+    const existingMsg = document.getElementById('offline-message');
+    if (existingMsg) return;
+    
+    const msg = document.createElement('div');
+    msg.id = 'offline-message';
+    msg.textContent = 'Você está offline. Apenas músicas já reproduzidas estão disponíveis.';
+    msg.style.position = 'fixed';
+    msg.style.bottom = '70px';
+    msg.style.left = '20px';
+    msg.style.right = '20px';
+    msg.style.backgroundColor = '#ff9800';
+    msg.style.color = 'white';
+    msg.style.padding = '10px';
+    msg.style.borderRadius = '5px';
+    msg.style.zIndex = '1000';
+    msg.style.textAlign = 'center';
+    msg.style.animation = 'fadeIn 0.3s ease-in-out';
+    
+    document.body.appendChild(msg);
+    
+    setTimeout(() => {
+        msg.style.opacity = '0';
+        setTimeout(() => msg.remove(), 500);
+    }, 5000);
+}
+
+// Pré-cache de músicas quando online
+async function preCacheSongs() {
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller && navigator.onLine) {
+        try {
+            const cache = await caches.open(CACHE_NAME);
+            
+            // Cache básico de recursos primeiro
+            await cache.addAll([
+                '/',
+                '/index.html',
+                '/style.css',
+                '/script.js',
+                '/icon-192.png',
+                '/icon-512.png'
+            ]);
+            
+            // Cache de músicas (opcional - pode consumir muita banda)
+            // for (const song of songs) {
+            //     const songUrl = `musicas/${song}`;
+            //     try {
+            //         await cache.add(songUrl);
+            //     } catch (error) {
+            //         console.error(`Erro ao armazenar ${song} no cache:`, error);
+            //     }
+            // }
+        } catch (error) {
+            console.error("Erro ao pré-armazenar no cache:", error);
+        }
+    }
+}
+
+// Event listeners para status de conexão
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus(); // Verifica o status inicial
+
+// Inicia o player quando a página carrega
+window.addEventListener('load', () => {
+    // Registra o Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('ServiceWorker registrado com sucesso:', registration.scope);
+                // Pré-cache após registro bem-sucedido
+                preCacheSongs();
+            })
+            .catch(error => {
+                console.log('Falha no registro do ServiceWorker:', error);
+            });
+    }
+    
+    loadSongs();
+});
