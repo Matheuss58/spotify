@@ -10,7 +10,7 @@ const nowPlayingCover = document.getElementById('nowPlayingCover');
 const shuffleBtn = document.getElementById('shuffleBtn');
 
 // Nome do cache para armazenamento offline
-const CACHE_NAME = 'musicas-offline-v1';
+const CACHE_NAME = 'musicas-offline-v2';
 
 // Ícones SVG para play/pause
 const PLAY_ICON = `
@@ -52,6 +52,10 @@ const songs = [
     'vivendo o passado.mp3'
 ];
 
+// Variáveis para instalação PWA
+let deferredPrompt;
+let installButton = null;
+
 // Função para carregar e exibir a playlist
 function loadSongs() {
     renderPlaylist();
@@ -82,7 +86,7 @@ async function playSong(index) {
                     audioPlayer.src = URL.createObjectURL(blob);
                     audioPlayer.play().catch(e => console.error("Erro ao reproduzir offline:", e));
                 } else {
-                    alert('Esta música não está disponível offline.');
+                    showOfflineMessage(`"${baseName}" não está disponível offline`);
                     // Marca a música como não disponível
                     const items = playlistElement.getElementsByTagName('li');
                     if (items[index]) {
@@ -92,7 +96,7 @@ async function playSong(index) {
                 }
             } catch (error) {
                 console.error("Erro ao acessar cache:", error);
-                alert('Erro ao carregar música offline.');
+                showOfflineMessage("Erro ao carregar música offline");
                 return;
             }
         } else {
@@ -129,16 +133,10 @@ function updateNowPlayingUI(baseName) {
     highlightCurrentSong();
 }
 
+// Carrega a capa do álbum (versão corrigida sem duplicação)
 function loadAlbumCover(baseName) {
-    // Limpa o conteúdo atual
     nowPlayingCover.innerHTML = '';
-    
     const img = document.createElement('img');
-    img.alt = `Capa de ${baseName}`;
-    img.style.width = '100%';
-    img.style.height = '100%';
-    img.style.objectFit = 'cover';
-    img.style.borderRadius = '5px';
     
     const extensions = ['jpeg', 'jpg', 'png', 'gif', 'webp', 'avif'];
     let currentExtensionIndex = 0;
@@ -148,7 +146,6 @@ function loadAlbumCover(baseName) {
             const ext = extensions[currentExtensionIndex++];
             img.src = `musicas/covers/${baseName}.${ext}?${Date.now()}`;
         } else {
-            // Fallback quando nenhuma imagem é encontrada
             nowPlayingCover.innerHTML = '🎵';
             nowPlayingCover.style.fontSize = '24px';
             nowPlayingCover.style.display = 'flex';
@@ -157,18 +154,22 @@ function loadAlbumCover(baseName) {
         }
     }
     
-    // Configura os event listeners
+    img.alt = `Capa de ${baseName}`;
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'cover';
+    img.style.borderRadius = '5px';
+    
     img.onload = () => {
-        // Remove qualquer conteúdo fallback que possa existir
         nowPlayingCover.innerHTML = '';
         nowPlayingCover.appendChild(img);
     };
     
     img.onerror = tryNextExtension;
     
-    // Inicia o processo de tentar carregar a imagem
     tryNextExtension();
 }
+
 // Renderiza a lista de músicas
 function renderPlaylist() {
     playlistElement.innerHTML = '';
@@ -322,97 +323,58 @@ document.getElementById('nextBtn').addEventListener('click', () => {
     playSong(nextIndex);
 });
 
-// Melhora a resposta tátil nos botões
-document.querySelectorAll('#prevBtn, #nextBtn, #shuffleBtn, #playPauseBtn').forEach(btn => {
-    btn.addEventListener('touchstart', () => {
-        btn.style.transform = 'scale(0.9)';
+// Configuração dos botões para mobile
+function setupMobileButtons() {
+    const buttons = ['#prevBtn', '#nextBtn', '#playPauseBtn', '#shuffleBtn'];
+    
+    buttons.forEach(selector => {
+        const btn = document.querySelector(selector);
+        if (!btn) return;
+        
+        // Estilos comuns
+        btn.style.webkitTapHighlightColor = 'transparent';
+        btn.style.touchAction = 'manipulation';
+        
+        // Eventos para toque
+        btn.addEventListener('touchstart', () => {
+            btn.style.transform = 'scale(0.9)';
+            btn.style.transition = 'transform 0.1s ease';
+        });
+        
+        btn.addEventListener('touchend', () => {
+            btn.style.transform = 'scale(1)';
+            btn.style.transition = 'transform 0.2s ease';
+        });
+        
+        // Eventos para mouse (desktop)
+        btn.addEventListener('mousedown', () => {
+            btn.style.transform = 'scale(0.95)';
+        });
+        
+        btn.addEventListener('mouseup', () => {
+            btn.style.transform = 'scale(1)';
+        });
+        
+        btn.addEventListener('mouseleave', () => {
+            btn.style.transform = 'scale(1)';
+        });
     });
-    btn.addEventListener('touchend', () => {
-        btn.style.transform = 'scale(1)';
-    });
-});
+}
 
 // Previne o zoom indesejado com toque duplo
 document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
 
-// PWA Installation
-let deferredPrompt;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    
-    if (!window.matchMedia('(display-mode: standalone)').matches) {
-        showInstallButton(true);
-    }
-});
-
-window.addEventListener('appinstalled', () => {
-    const installBtn = document.getElementById('installPWAButton');
-    if (installBtn) {
-        installBtn.remove();
-    }
-    deferredPrompt = null;
-});
-
-function showInstallButton(supportsOffline = false) {
-    if (document.getElementById('installPWAButton')) {
+// Mostra mensagem offline
+function showOfflineMessage(message = 'Você está offline. Algumas funcionalidades podem estar limitadas.') {
+    const existingMsg = document.getElementById('offline-message');
+    if (existingMsg) {
+        existingMsg.textContent = message;
         return;
     }
-
-    const installBtn = document.createElement('button');
-    installBtn.id = 'installPWAButton';
-    installBtn.innerHTML = supportsOffline 
-        ? '📲 Instalar App (funciona offline)' 
-        : '📲 Instalar App';
-    installBtn.style.position = 'fixed';
-    installBtn.style.bottom = '20px';
-    installBtn.style.right = '20px';
-    installBtn.style.zIndex = '1000';
-    installBtn.style.padding = '10px 20px';
-    installBtn.style.backgroundColor = '#1DB954';
-    installBtn.style.color = 'white';
-    installBtn.style.border = 'none';
-    installBtn.style.borderRadius = '5px';
-    installBtn.style.fontWeight = 'bold';
-    installBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
-  
-    installBtn.addEventListener('click', () => {
-        installBtn.style.display = 'none';
-        deferredPrompt.prompt();
-        
-        deferredPrompt.userChoice.then((choiceResult) => {
-            if (choiceResult.outcome === 'accepted') {
-                console.log('Usuário aceitou a instalação');
-            } else {
-                console.log('Usuário rejeitou a instalação');
-            }
-            deferredPrompt = null;
-        });
-    });
-  
-    document.body.appendChild(installBtn);
-}
-
-// Verifica suporte offline e atualiza a UI
-function updateOnlineStatus() {
-    if (navigator.onLine) {
-        console.log('Online');
-        document.body.classList.remove('offline');
-    } else {
-        console.log('Offline');
-        document.body.classList.add('offline');
-        showOfflineMessage();
-    }
-}
-
-function showOfflineMessage() {
-    const existingMsg = document.getElementById('offline-message');
-    if (existingMsg) return;
     
     const msg = document.createElement('div');
     msg.id = 'offline-message';
-    msg.textContent = 'Você está offline. Apenas músicas já reproduzidas estão disponíveis.';
+    msg.textContent = message;
     msg.style.position = 'fixed';
     msg.style.bottom = '70px';
     msg.style.left = '20px';
@@ -433,56 +395,137 @@ function showOfflineMessage() {
     }, 5000);
 }
 
-// Pré-cache de músicas quando online
-async function preCacheSongs() {
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller && navigator.onLine) {
-        try {
-            const cache = await caches.open(CACHE_NAME);
-            
-            // Cache básico de recursos primeiro
-            await cache.addAll([
-                '/',
-                '/index.html',
-                '/style.css',
-                '/script.js',
-                '/icon-192.png',
-                '/icon-512.png'
-            ]);
-            
-            // Cache de músicas (opcional - pode consumir muita banda)
-            // for (const song of songs) {
-            //     const songUrl = `musicas/${song}`;
-            //     try {
-            //         await cache.add(songUrl);
-            //     } catch (error) {
-            //         console.error(`Erro ao armazenar ${song} no cache:`, error);
-            //     }
-            // }
-        } catch (error) {
-            console.error("Erro ao pré-armazenar no cache:", error);
-        }
+// Verifica status da conexão
+function updateOnlineStatus() {
+    if (navigator.onLine) {
+        document.body.classList.remove('offline');
+    } else {
+        document.body.classList.add('offline');
+        showOfflineMessage();
     }
 }
 
-// Event listeners para status de conexão
-window.addEventListener('online', updateOnlineStatus);
-window.addEventListener('offline', updateOnlineStatus);
-updateOnlineStatus(); // Verifica o status inicial
+// Instalação PWA
+function showInstallButton() {
+    if (installButton || !deferredPrompt) return;
+    
+    installButton = document.createElement('button');
+    installButton.id = 'installButton';
+    installButton.innerHTML = `
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+            <path d="M17 18V19H6V18H17ZM16.5 11.4L15.8 10.7L12 14.6L8.2 10.8L7.5 11.5L12 16L16.5 11.4ZM12 3C12 3 16 3 16 7V10H18V7C18 2 12 2 12 2C12 2 6 2 6 7V10H8V7C8 3 12 3 12 3Z"/>
+        </svg>
+        Instalar App
+    `;
+    
+    // Estilos do botão
+    Object.assign(installButton.style, {
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        zIndex: '1000',
+        padding: '10px 15px',
+        backgroundColor: '#1DB954',
+        color: 'white',
+        border: 'none',
+        borderRadius: '50px',
+        fontWeight: 'bold',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        cursor: 'pointer',
+        transition: 'all 0.3s ease'
+    });
 
-// Inicia o player quando a página carrega
-window.addEventListener('load', () => {
-    // Registra o Service Worker
+    // Efeitos de interação
+    installButton.addEventListener('mouseenter', () => {
+        installButton.style.transform = 'translateY(-2px)';
+        installButton.style.boxShadow = '0 6px 16px rgba(0,0,0,0.4)';
+    });
+    
+    installButton.addEventListener('mouseleave', () => {
+        installButton.style.transform = 'translateY(0)';
+        installButton.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+    });
+    
+    installButton.addEventListener('click', () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            
+            deferredPrompt.userChoice.then(choiceResult => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('Usuário aceitou a instalação');
+                    hideInstallButton();
+                }
+                deferredPrompt = null;
+            });
+        }
+    });
+    
+    document.body.appendChild(installButton);
+}
+
+function hideInstallButton() {
+    if (installButton) {
+        installButton.remove();
+        installButton = null;
+    }
+}
+
+// Eventos PWA
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    if (!window.matchMedia('(display-mode: standalone)').matches) {
+        showInstallButton();
+    }
+});
+
+window.addEventListener('appinstalled', () => {
+    console.log('App instalado com sucesso');
+    hideInstallButton();
+    deferredPrompt = null;
+});
+
+// Verificação periódica para instalação PWA
+function checkPWAInstallable() {
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        hideInstallButton();
+    } else if (deferredPrompt) {
+        showInstallButton();
+    }
+}
+
+// Inicialização do aplicativo
+function initApp() {
+    // Configura botões para mobile
+    setupMobileButtons();
+    
+    // Verifica status da conexão
+    updateOnlineStatus();
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    
+    // Verifica instalação PWA
+    checkPWAInstallable();
+    setInterval(checkPWAInstallable, 300000);
+    
+    // Registra Service Worker
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js')
             .then(registration => {
-                console.log('ServiceWorker registrado com sucesso:', registration.scope);
-                // Pré-cache após registro bem-sucedido
-                preCacheSongs();
+                console.log('Service Worker registrado:', registration.scope);
             })
             .catch(error => {
-                console.log('Falha no registro do ServiceWorker:', error);
+                console.log('Falha no registro do Service Worker:', error);
             });
     }
     
+    // Carrega as músicas
     loadSongs();
-});
+}
+
+// Inicia o app quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', initApp);
