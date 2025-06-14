@@ -64,7 +64,6 @@ function playSong(index) {
         const song = songs[index];
         const baseName = song.replace('.mp3', '');
     
-
         updateNowPlayingUI(baseName);
         
         audioPlayer.src = `musicas/${song}`;
@@ -92,7 +91,7 @@ function loadAlbumCover(baseName) {
     function tryNextExtension() {
         if (currentExtensionIndex < extensions.length) {
             const ext = extensions[currentExtensionIndex++];
-            img.src = `musicas/covers/${baseName}.${ext}`;
+            img.src = `musicas/covers/${baseName}.${ext}?${Date.now()}`;
         } else {
             nowPlayingCover.innerHTML = '🎵';
             nowPlayingCover.style.fontSize = '24px';
@@ -108,11 +107,13 @@ function loadAlbumCover(baseName) {
     img.style.objectFit = 'cover';
     img.style.borderRadius = '5px';
     
-    img.onload = () => nowPlayingCover.appendChild(img);
+    img.onload = () => {
+        nowPlayingCover.innerHTML = '';
+        nowPlayingCover.appendChild(img);
+    };
     img.onerror = tryNextExtension;
     
     tryNextExtension();
-    nowPlayingCover.appendChild(img);
 }
 
 // Renderiza a lista de músicas
@@ -183,12 +184,19 @@ function formatTime(seconds) {
     return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
 }
 
-// Event Listeners
+// Evento do botão shuffle
 shuffleBtn.addEventListener('click', () => {
     isShuffleMode = !isShuffleMode;
     shuffleBtn.classList.toggle('active', isShuffleMode);
+    
+    // Feedback visual
+    shuffleBtn.style.transform = 'scale(1.1)';
+    setTimeout(() => {
+        shuffleBtn.style.transform = 'scale(1)';
+    }, 200);
 });
 
+// Eventos do player de áudio
 audioPlayer.addEventListener('timeupdate', () => {
     if (!isNaN(audioPlayer.duration)) {
         const progress = (audioPlayer.currentTime / audioPlayer.duration) * 100;
@@ -206,9 +214,13 @@ audioPlayer.addEventListener('ended', () => {
     let nextIndex;
     
     if (isShuffleMode) {
-        do {
-            nextIndex = Math.floor(Math.random() * songs.length);
-        } while (nextIndex === currentSongIndex && songs.length > 1);
+        const availableIndices = [...Array(songs.length).keys()];
+        
+        if (songs.length > 1) {
+            availableIndices.splice(currentSongIndex, 1);
+        }
+        
+        nextIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
     } else {
         nextIndex = (currentSongIndex + 1) % songs.length;
     }
@@ -219,11 +231,6 @@ audioPlayer.addEventListener('ended', () => {
 audioPlayer.addEventListener('play', () => {
     playPauseBtn.innerHTML = PAUSE_ICON;
     highlightCurrentSong();
-    const song = songs[currentSongIndex];
-    const baseName = song.replace('.mp3', '');
-    nowPlayingTitle.textContent = baseName;
-    nowPlayingArtist.textContent = 'Matheus Galvão';
-    loadAlbumCover(baseName);
 });
 
 audioPlayer.addEventListener('pause', () => {
@@ -236,6 +243,7 @@ progressBar.addEventListener('input', () => {
     document.getElementById('progressFill').style.width = `${progressBar.value}%`;
 });
 
+// Controles do player
 playPauseBtn.addEventListener('click', (e) => {
     e.preventDefault();
     
@@ -245,7 +253,6 @@ playPauseBtn.addEventListener('click', (e) => {
         audioPlayer.pause();
     }
     
-    // Efeito de clique
     playPauseBtn.style.transform = 'scale(0.95)';
     setTimeout(() => {
         playPauseBtn.style.transform = 'scale(1)';
@@ -263,62 +270,73 @@ document.getElementById('nextBtn').addEventListener('click', () => {
 });
 
 // Melhora a resposta tátil nos botões
-document.querySelectorAll('button').forEach(btn => {
-    btn.addEventListener('touchstart', () => btn.style.transform = 'scale(0.95)');
-    btn.addEventListener('touchend', () => btn.style.transform = 'scale(1)');
+document.querySelectorAll('#prevBtn, #nextBtn, #shuffleBtn, #playPauseBtn').forEach(btn => {
+    btn.addEventListener('touchstart', () => {
+        btn.style.transform = 'scale(0.9)';
+    });
+    btn.addEventListener('touchend', () => {
+        btn.style.transform = 'scale(1)';
+    });
 });
 
 // Previne o zoom indesejado com toque duplo
 document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
 
-// Verifica se é instalável
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  console.log("Pode ser instalado como app!");
-  // Aqui você pode mostrar um botão "Instalar App"
-});
-
+// PWA Installation
 let deferredPrompt;
 
 window.addEventListener('beforeinstallprompt', (e) => {
-  // Previne que o prompt apareça automaticamente
-  e.preventDefault();
-  // Armazena o evento para ser usado depois
-  deferredPrompt = e;
-  // Mostra um botão de instalação
-  showInstallButton();
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    if (!window.matchMedia('(display-mode: standalone)').matches) {
+        showInstallButton();
+    }
+});
+
+window.addEventListener('appinstalled', () => {
+    const installBtn = document.getElementById('installPWAButton');
+    if (installBtn) {
+        installBtn.remove();
+    }
+    deferredPrompt = null;
 });
 
 function showInstallButton() {
-  const installBtn = document.createElement('button');
-  installBtn.textContent = 'Instalar App';
-  installBtn.style.position = 'fixed';
-  installBtn.style.bottom = '20px';
-  installBtn.style.right = '20px';
-  installBtn.style.zIndex = '1000';
-  installBtn.style.padding = '10px 20px';
-  installBtn.style.backgroundColor = '#1DB954';
-  installBtn.style.color = 'white';
-  installBtn.style.border = 'none';
-  installBtn.style.borderRadius = '5px';
+    if (document.getElementById('installPWAButton')) {
+        return;
+    }
+
+    const installBtn = document.createElement('button');
+    installBtn.id = 'installPWAButton';
+    installBtn.textContent = 'Instalar App';
+    installBtn.style.position = 'fixed';
+    installBtn.style.bottom = '20px';
+    installBtn.style.right = '20px';
+    installBtn.style.zIndex = '1000';
+    installBtn.style.padding = '10px 20px';
+    installBtn.style.backgroundColor = '#1DB954';
+    installBtn.style.color = 'white';
+    installBtn.style.border = 'none';
+    installBtn.style.borderRadius = '5px';
+    installBtn.style.fontWeight = 'bold';
+    installBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
   
-  installBtn.addEventListener('click', () => {
-    // Esconde o botão
-    installBtn.style.display = 'none';
-    // Mostra o prompt de instalação
-    deferredPrompt.prompt();
-    // Aguarda a resposta do usuário
-    deferredPrompt.userChoice.then((choiceResult) => {
-      if (choiceResult.outcome === 'accepted') {
-        console.log('Usuário aceitou a instalação');
-      } else {
-        console.log('Usuário rejeitou a instalação');
-      }
-      deferredPrompt = null;
+    installBtn.addEventListener('click', () => {
+        installBtn.style.display = 'none';
+        deferredPrompt.prompt();
+        
+        deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('Usuário aceitou a instalação');
+            } else {
+                console.log('Usuário rejeitou a instalação');
+            }
+            deferredPrompt = null;
+        });
     });
-  });
   
-  document.body.appendChild(installBtn);
+    document.body.appendChild(installBtn);
 }
 
 // Inicia o player
