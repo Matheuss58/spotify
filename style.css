@@ -329,3 +329,23 @@ body {
 #prevBtn:active, #nextBtn:active {
     transform: scale(0.9);          /* Efeito de clique */
 }
+
+/* BOTÕES AUMENTADOS (MOBILE E DESKTOP) */
+#prevBtn, #nextBtn {
+    font-size: 28px !important;
+    width: 40px !important;
+    height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Garante que o tamanho seja aplicado em telas pequenas */
+@media (max-width: 480px) {
+    #prevBtn, #nextBtn {
+        font-size: 32px !important; /* Aumente se precisar */
+        width: 50px !important;     /* Botões mais largos */
+        height: 50px !important;
+        margin: 0 5px !important;   /* Espaçamento extra */
+    }
+}

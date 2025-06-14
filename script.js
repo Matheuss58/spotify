@@ -278,5 +278,48 @@ window.addEventListener('beforeinstallprompt', (e) => {
   // Aqui você pode mostrar um botão "Instalar App"
 });
 
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Previne que o prompt apareça automaticamente
+  e.preventDefault();
+  // Armazena o evento para ser usado depois
+  deferredPrompt = e;
+  // Mostra um botão de instalação
+  showInstallButton();
+});
+
+function showInstallButton() {
+  const installBtn = document.createElement('button');
+  installBtn.textContent = 'Instalar App';
+  installBtn.style.position = 'fixed';
+  installBtn.style.bottom = '20px';
+  installBtn.style.right = '20px';
+  installBtn.style.zIndex = '1000';
+  installBtn.style.padding = '10px 20px';
+  installBtn.style.backgroundColor = '#1DB954';
+  installBtn.style.color = 'white';
+  installBtn.style.border = 'none';
+  installBtn.style.borderRadius = '5px';
+  
+  installBtn.addEventListener('click', () => {
+    // Esconde o botão
+    installBtn.style.display = 'none';
+    // Mostra o prompt de instalação
+    deferredPrompt.prompt();
+    // Aguarda a resposta do usuário
+    deferredPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('Usuário aceitou a instalação');
+      } else {
+        console.log('Usuário rejeitou a instalação');
+      }
+      deferredPrompt = null;
+    });
+  });
+  
+  document.body.appendChild(installBtn);
+}
+
 // Inicia o player
 loadSongs();
