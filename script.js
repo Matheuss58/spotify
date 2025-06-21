@@ -35,23 +35,23 @@ class MusicPlayer {
 
         this.originalSongs = [
             'xeque-mate.mp3',
-            'olhos vazios.mp3', 
-            'akuma no mi.mp3',
-            'aguas passadas.mp3',
-            'amores rasos.mp3',
+            'olhos-vazios.mp3', 
+            'akuma-no-mi.mp3',
+            'aguas-passadas.mp3',
+            'amores-rasos.mp3',
             'andei.mp3',
             'cansado.mp3',
-            'eu venci.mp3',
-            'gato da caixa.mp3',
-            'insuficiencia cosmica.mp3',
+            'eu-venci.mp3',
+            'gato-da-caixa.mp3',
+            'insuficiencia-cosmica.mp3',
             'judas.mp3',
             'morte.mp3',
             'nuvens.mp3',
-            'o ciclo odioso.mp3',
+            'o-ciclo-odioso.mp3',
             'sacrilegio inepto.mp3',
             'sozin.mp3',
             'trela.mp3',
-            'vivendo o passado.mp3'
+            'vivendo-o-passado.mp3'
         ];
 
         this.songs = this.shuffleArray([...this.originalSongs]);
