@@ -7,7 +7,14 @@
     <meta name="theme-color" content="#1DB954">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- Manifesto PWA -->
     <link rel="manifest" href="manifest.json">
+
+    <!-- Ícones para dispositivos Apple -->
+    <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512x512.png">
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,27 +27,16 @@
         
         <div class="player-controls">
             <button id="prevBtn" class="control-btn" aria-label="Música anterior">
-                <svg viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
-                </svg>
+                ⏮️
             </button>
             <button id="playPauseBtn" class="control-btn main-btn" aria-label="Play/Pause">
-                <svg id="playIcon" viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M8 5v14l11-7z"/>
-                </svg>
-                <svg id="pauseIcon" viewBox="0 0 24 24" width="24" height="24" style="display:none">
-                    <path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-                </svg>
+                ▶️/⏸️
             </button>
             <button id="nextBtn" class="control-btn" aria-label="Próxima música">
-                <svg viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
-                </svg>
+                ⏭️
             </button>
             <button id="shuffleBtn" class="control-btn" aria-label="Modo aleatório">
-                <svg viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
-                </svg>
+                🔀
             </button>
         </div>
         
@@ -71,5 +67,14 @@
     </div>
     
     <script src="script.js"></script>
+
+    <!-- Registro do Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(reg => console.log('✅ Service Worker registrado com sucesso:', reg))
+                .catch(err => console.error('❌ Erro ao registrar o Service Worker:', err));
+        }
+    </script>
 </body>
 </html>
