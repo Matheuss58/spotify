@@ -48,7 +48,7 @@ class MusicPlayer {
             'morte.mp3',
             'nuvens.mp3',
             'o-ciclo-odioso.mp3',
-            'sacrilegio inepto.mp3',
+            'sacrilegio-inepto.mp3',
             'sozin.mp3',
             'trela.mp3',
             'vivendo-o-passado.mp3'
