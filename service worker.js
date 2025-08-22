@@ -11,7 +11,6 @@ const urlsToCache = [
   // Músicas
   '/musicas/xeque-mate.mp3',
   '/musicas/olhos-vazios.mp3',
-  '/musicas/akuma-no-mi.mp3',
   '/musicas/aguas-passadas.mp3',
   '/musicas/amores-rasos.mp3',
   '/musicas/andei.mp3',
@@ -31,7 +30,6 @@ const urlsToCache = [
   // Capas (formato .avif, se tiver outros formatos adiciona aqui)
   '/musicas/covers/xeque-mate.jpeg',
   '/musicas/covers/olhos-vazios.jpeg',
-  '/musicas/covers/akuma-no-mi.jpeg',
   '/musicas/covers/aguas-passadas.jpeg',
   '/musicas/covers/amores-rasos.jpeg',
   '/musicas/covers/andei.jpeg',

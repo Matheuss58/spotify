@@ -36,7 +36,6 @@ class MusicPlayer {
         this.originalSongs = [
             'xeque-mate.mp3',
             'olhos-vazios.mp3', 
-            'akuma-no-mi.mp3',
             'aguas-passadas.mp3',
             'amores-rasos.mp3',
             'andei.mp3',
