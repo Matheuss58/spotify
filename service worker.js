@@ -23,10 +23,9 @@ const urlsToCache = [
   '/musicas/sacrilegio inepto.mp3',
   '/musicas/trela.mp3',
   '/musicas/vivendo-o-passado.mp3',
+  '/musicas/querido-Deus.mp3',
 
   // Capas (formato .avif, se tiver outros formatos adiciona aqui)
-  '/musicas/covers/xeque-mate.jpeg',
-  '/musicas/covers/olhos-vazios.jpeg',
   '/musicas/covers/aguas-passadas.jpeg',
   '/musicas/covers/amores-rasos.jpeg',
   '/musicas/covers/andei.jpeg',
@@ -39,10 +38,10 @@ const urlsToCache = [
   '/musicas/covers/nuvens.jpeg',
   '/musicas/covers/o-ciclo-odioso.jpeg',
   '/musicas/covers/sacrilegio-inepto.avif',
-  '/musicas/covers/sozin.webp',
   '/musicas/covers/trela.jpeg',
-  '/musicas/covers/vivendo-o-passado.jpeg'
-];
+  '/musicas/covers/vivendo-o-passado.jpeg',
+  '/musicas/covers/querido-Deus.jpg'
+]
 
 // Instala e faz cache inicial
 self.addEventListener('install', event => {

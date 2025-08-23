@@ -47,7 +47,8 @@ class MusicPlayer {
             'o-ciclo-odioso.mp3',
             'sacrilegio-inepto.mp3',
             'trela.mp3',
-            'vivendo-o-passado.mp3'
+            'vivendo-o-passado.mp3',
+            'querido-Deus.mp3'
         ];
 
         this.songs = this.shuffleArray([...this.originalSongs]);
