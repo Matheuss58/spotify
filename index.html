@@ -10,19 +10,38 @@
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
     
+    <!-- Pré-carregar recursos críticos -->
+    <link rel="preload" href="script.js" as="script">
+    <link rel="preload" href="style.css" as="style">
+    
     <!-- Ícones para iOS e Android -->
-<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
-<link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512x512.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512x512.png">
+    
+    <!-- Splash screen para iOS -->
+    <link rel="apple-touch-startup-image" href="icons/splash.png">
 </head>
 <body>
     <div class="app-container">
-        <h1 class="title">SPOTIFY FREE</h1>
+        <header class="app-header">
+            <h1 class="title">SPOTIFY FREE</h1>
+            <button id="resetHistoryBtn" class="reset-btn" aria-label="Resetar histórico">
+                <svg viewBox="0 0 24 24" width="20" height="20">
+                    <path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                </svg>
+            </button>
+        </header>
         
         <div class="player">
             <ul id="playlist"></ul>
         </div>
         
         <div class="player-controls">
+            <button id="shuffleBtn" class="control-btn" aria-label="Modo aleatório">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="currentColor" d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
+                </svg>
+            </button>
             <button id="prevBtn" class="control-btn" aria-label="Música anterior">
                 <svg viewBox="0 0 24 24" width="24" height="24">
                     <path fill="currentColor" d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
@@ -41,9 +60,9 @@
                     <path fill="currentColor" d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
                 </svg>
             </button>
-            <button id="shuffleBtn" class="control-btn" aria-label="Modo aleatório">
+            <button id="repeatBtn" class="control-btn" aria-label="Modo repetição">
                 <svg viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
+                    <path fill="currentColor" d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>
                 </svg>
             </button>
         </div>
@@ -62,7 +81,7 @@
                 <div class="progress-wrapper">
                     <div class="progress-background"></div>
                     <div class="progress-fill" id="progressFill"></div>
-                    <input type="range" id="progressBar" class="progress-bar" min="0" max="100" value="0">
+                    <input type="range" id="progressBar" class="progress-bar" min="0" max="100" value="0" step="0.1" aria-label="Barra de progresso">
                 </div>
                 <div class="time-info">
                     <span id="currentTime">0:00</span>
@@ -71,18 +90,54 @@
             </div>
         </div>
         
-        <audio id="audioPlayer"></audio>
+        <audio id="audioPlayer" preload="metadata"></audio>
+        
+        <!-- Loading indicator -->
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="loading-spinner"></div>
+            <span>Carregando...</span>
+        </div>
     </div>
     
-    <script src="script.js"></script>
+    <script src="script.js" defer></script>
     <!-- Service Worker -->
-<script>
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./service-worker.js', { scope: './' })
-            .then(reg => console.log('✅ Service Worker registrado:', reg))
-            .catch(err => console.error('❌ Erro no Service Worker:', err));
-    }
-</script>
-
+    <script>
+        // Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('./service-worker.js', { scope: './' })
+                    .then(reg => {
+                        console.log('✅ Service Worker registrado:', reg);
+                        // Verificar se há uma nova versão disponível
+                        reg.onupdatefound = () => {
+                            const newWorker = reg.installing;
+                            newWorker.onstatechange = () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('Nova versão disponível!');
+                                    // Aqui você pode mostrar uma notificação para o usuário
+                                }
+                            };
+                        };
+                    })
+                    .catch(err => console.error('❌ Erro no Service Worker:', err));
+            });
+        }
+        
+        // Prevenir comportamento de pull-to-refresh em dispositivos móveis
+        document.body.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        let lastTouchEnd = 0;
+        document.body.addEventListener('touchend', function(e) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, { passive: false });
+    </script>
 </body>
 </html>
