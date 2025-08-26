@@ -7,6 +7,8 @@ const urlsToCache = [
   '/manifest.json',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
+  '/icons/screenshot-1.png',
+  '/icons/screenshot-2.png',
 
   // Músicas - adicionar timestamp para evitar cache
   '/musicas/aguas-passadas.mp3',
