@@ -7,6 +7,10 @@
     <meta name="theme-color" content="#1DB954">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Spotify Free">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="msapplication-TileColor" content="#1DB954">
+    <meta name="msapplication-tap-highlight" content="no">
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
     
@@ -97,6 +101,9 @@
             <div class="loading-spinner"></div>
             <span>Carregando...</span>
         </div>
+        
+        <!-- Toast container -->
+        <div id="toastContainer"></div>
     </div>
     
     <script src="script.js" defer></script>
@@ -108,36 +115,33 @@
                 navigator.serviceWorker.register('./service-worker.js', { scope: './' })
                     .then(reg => {
                         console.log('✅ Service Worker registrado:', reg);
-                        // Verificar se há uma nova versão disponível
-                        reg.onupdatefound = () => {
-                            const newWorker = reg.installing;
-                            newWorker.onstatechange = () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    console.log('Nova versão disponível!');
-                                    // Aqui você pode mostrar uma notificação para o usuário
-                                }
-                            };
-                        };
                     })
                     .catch(err => console.error('❌ Erro no Service Worker:', err));
             });
         }
         
         // Prevenir comportamento de pull-to-refresh em dispositivos móveis
-        document.body.addEventListener('touchstart', function(e) {
+        document.addEventListener('touchstart', function(e) {
             if (e.touches.length > 1) {
                 e.preventDefault();
             }
         }, { passive: false });
         
         let lastTouchEnd = 0;
-        document.body.addEventListener('touchend', function(e) {
+        document.addEventListener('touchend', function(e) {
             const now = (new Date()).getTime();
             if (now - lastTouchEnd <= 300) {
                 e.preventDefault();
             }
             lastTouchEnd = now;
-        }, { passive: false });
+        }, false);
+        
+        // Prevenir zoom com double-tap
+        document.addEventListener('touchend', function(e) {
+            if (e.touches && e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, false);
     </script>
 </body>
 </html>

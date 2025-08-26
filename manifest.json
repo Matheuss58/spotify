@@ -8,14 +8,12 @@
   "theme_color": "#1DB954",
   "description": "Player de música estilo Spotify - Ouça suas músicas favoritas offline",
   "icons": [
-    
     {
       "src": "icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
-    
     {
       "src": "icons/icon-512x512.png",
       "sizes": "512x512",
@@ -23,25 +21,7 @@
       "purpose": "any maskable"
     }
   ],
-  
   "categories": ["music", "entertainment"],
   "orientation": "portrait",
-  "prefer_related_applications": false,
-  "related_applications": [],
-  "screenshots": [
-    {
-      "src": "icons/screenshot-1.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Player de música Spotify Free em desktop"
-    },
-    {
-      "src": "icons/screenshot-2.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Player de música Spotify Free em mobile"
-    }
-  ]
+  "prefer_related_applications": false
 }

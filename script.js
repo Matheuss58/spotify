@@ -1,7 +1,8 @@
 // Função auxiliar para mostrar toast notifications
 function showToast(message, type = 'success') {
-    // Remover toast existente se houver
+    const toastContainer = document.getElementById('toastContainer') || document.body;
     const existingToast = document.getElementById('app-toast');
+    
     if (existingToast) {
         existingToast.remove();
     }
@@ -14,7 +15,7 @@ function showToast(message, type = 'success') {
         <span>${message}</span>
     `;
     
-    document.body.appendChild(toast);
+    toastContainer.appendChild(toast);
     
     // Auto-remover após 3 segundos
     setTimeout(() => {
@@ -39,7 +40,6 @@ function handleImageError(imgElement, songName) {
     function tryNextExtension() {
         if (currentExtensionIndex < extensions.length) {
             const ext = extensions[currentExtensionIndex++];
-            // Adicionar timestamp para evitar cache
             imgElement.src = `musicas/covers/${songName}.${ext}?t=${Date.now()}`;
             imgElement.onerror = tryNextExtension;
         } else {
@@ -98,6 +98,7 @@ class MusicPlayer {
         this.isSeeking = false;
         this.imageExtensions = ['avif', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];
         this.cachedCovers = new Map();
+        this.userInteracted = false; // Nova flag para controle de interação
 
         this.init();
     }
@@ -109,8 +110,19 @@ class MusicPlayer {
         this.setupMobileControls();
         this.setupMediaSession();
         
-        // Pré-carregar a próxima música
-        this.preloadNextSong();
+        // Adicionar listener de interação do usuário
+        this.setupUserInteraction();
+    }
+
+    setupUserInteraction() {
+        // Marcar que o usuário interagiu com a página
+        const interactionEvents = ['click', 'touchstart', 'keydown'];
+        
+        interactionEvents.forEach(event => {
+            document.addEventListener(event, () => {
+                this.userInteracted = true;
+            }, { once: true, passive: true });
+        });
     }
 
     setupMediaSession() {
@@ -127,13 +139,11 @@ class MusicPlayer {
             });
 
             navigator.mediaSession.setActionHandler('play', () => {
-                this.audio.play().catch(e => console.error("Erro ao reproduzir:", e));
-                this.isPlaying = true;
+                this.togglePlayPause();
             });
 
             navigator.mediaSession.setActionHandler('pause', () => {
-                this.audio.pause();
-                this.isPlaying = false;
+                this.togglePlayPause();
             });
 
             navigator.mediaSession.setActionHandler('previoustrack', () => {
@@ -201,38 +211,42 @@ class MusicPlayer {
             console.error('Erro no áudio:', e);
             showToast('Erro ao carregar a música', 'error');
         });
-        
-        // Eventos de teclado para controles
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                e.preventDefault();
-                this.togglePlayPause();
-            } else if (e.code === 'ArrowRight') {
-                this.nextSong();
-            } else if (e.code === 'ArrowLeft') {
-                this.prevSong();
-            }
-        });
     }
 
     setupMobileControls() {
         const buttons = [this.playPauseBtn, this.prevBtn, this.nextBtn, this.shuffleBtn, this.repeatBtn, this.resetHistoryBtn];
         
         buttons.forEach(btn => {
+            // Touch events para mobile
             btn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                btn.style.transform = 'scale(0.9)';
+                btn.classList.add('active');
             });
             
             btn.addEventListener('touchend', (e) => {
                 e.preventDefault();
-                btn.style.transform = 'scale(1)';
+                btn.classList.remove('active');
+                btn.click(); // Disparar o click normal
             });
             
             btn.addEventListener('touchcancel', (e) => {
                 e.preventDefault();
-                btn.style.transform = 'scale(1)';
+                btn.classList.remove('active');
             });
+        });
+        
+        // Melhorar a experiência de toque na playlist
+        const playlistItems = this.playlistElement;
+        playlistItems.addEventListener('touchstart', (e) => {
+            if (e.target.closest('li')) {
+                e.target.closest('li').classList.add('active');
+            }
+        });
+        
+        playlistItems.addEventListener('touchend', (e) => {
+            if (e.target.closest('li')) {
+                e.target.closest('li').classList.remove('active');
+            }
         });
     }
 
@@ -241,7 +255,6 @@ class MusicPlayer {
         this.shuffleBtn.classList.toggle('active', this.shuffleMode);
         
         if (this.shuffleMode) {
-            // Embaralha a lista de músicas, mantendo a atual no mesmo lugar
             const currentSong = this.songs[this.currentSongIndex];
             const otherSongs = this.songs.filter((_, index) => index !== this.currentSongIndex);
             const shuffledOthers = this.shuffleArray(otherSongs);
@@ -250,7 +263,6 @@ class MusicPlayer {
             this.currentSongIndex = 0;
             showToast('Modo aleatório ativado');
         } else {
-            // Retorna à ordem original, mantendo a música atual
             const currentSong = this.songs[this.currentSongIndex];
             this.songs = [...this.originalSongs];
             this.currentSongIndex = this.songs.indexOf(currentSong);
@@ -258,7 +270,6 @@ class MusicPlayer {
         }
         
         this.renderPlaylist();
-        this.preloadNextSong();
     }
 
     toggleRepeat() {
@@ -271,12 +282,6 @@ class MusicPlayer {
         this.playedSongs.clear();
         this.renderPlaylist();
         showToast('Histórico reiniciado');
-        
-        // Feedback visual
-        this.resetHistoryBtn.style.transform = 'scale(0.9)';
-        setTimeout(() => {
-            this.resetHistoryBtn.style.transform = 'scale(1)';
-        }, 100);
     }
 
     shuffleArray(array) {
@@ -292,9 +297,8 @@ class MusicPlayer {
         this.playedSongs.add(this.songs[this.currentSongIndex]);
         
         if (this.repeatMode) {
-            // Repete a mesma música
             this.audio.currentTime = 0;
-            this.audio.play().catch(e => console.error("Erro ao reproduzir:", e));
+            this.safePlay();
         } else if (this.shuffleMode) {
             this.playRandomSong();
         } else {
@@ -305,15 +309,12 @@ class MusicPlayer {
     }
 
     playRandomSong() {
-        // Filtra músicas que ainda não foram reproduzidas
         let availableSongs = this.songs.filter(
             (song, index) => index !== this.currentSongIndex && !this.playedSongs.has(song)
         );
 
-        // Se todas as músicas já foram reproduzidas, reseta
         if (availableSongs.length === 0) {
             this.playedSongs.clear();
-            availableSongs = this.songs.filter
             availableSongs = this.songs.filter((_, index) => index !== this.currentSongIndex);
         }
 
@@ -325,7 +326,26 @@ class MusicPlayer {
         this.currentSongIndex = nextIndex;
         
         this.loadSong(this.currentSongIndex);
-        this.audio.play().catch(e => console.error("Erro ao reproduzir:", e));
+        this.safePlay();
+    }
+
+    safePlay() {
+        if (this.userInteracted) {
+            const playPromise = this.audio.play();
+            
+            if (playPromise !== undefined) {
+                playPromise
+                    .then(() => {
+                        // Reprodução iniciada com sucesso
+                    })
+                    .catch(error => {
+                        console.error("Erro ao reproduzir:", error);
+                        showToast('Toque para reproduzir', 'error');
+                    });
+            }
+        } else {
+            showToast('Toque em qualquer lugar para ativar o áudio', 'error');
+        }
     }
 
     renderPlaylist() {
@@ -355,7 +375,10 @@ class MusicPlayer {
                 li.classList.add('current');
             }
             
-            li.addEventListener('click', () => this.loadSong(index));
+            li.addEventListener('click', () => {
+                this.userInteracted = true;
+                this.loadSong(index);
+            });
             this.playlistElement.appendChild(li);
         });
     }
@@ -365,71 +388,47 @@ class MusicPlayer {
         const song = this.songs[index];
         const songName = song.replace('.mp3', '');
         
-        // Mostrar loading enquanto carrega
         toggleLoading(true);
         
-        // Pré-carregar a música
-        this.audio.src = `musicas/${song}?t=${Date.now()}`;
+        this.audio.src = `musicas/${song}`;
         this.audio.load();
         
         this.nowPlayingTitle.textContent = songName;
         this.nowPlayingArtist.textContent = 'Matheus Galvão';
         
-        // Atualizar a capa do álbum
         this.updateAlbumCover(songName);
         
-        // Atualizar a playlist para destacar a música atual
         const items = this.playlistElement.querySelectorAll('li');
         items.forEach((item, i) => {
             item.classList.toggle('current', i === index);
         });
         
-        // Rolar para a música atual na playlist
         items[index]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         
-        // Atualizar Media Session
         this.setupMediaSession();
         
-        // Pré-carregar a próxima música
-        this.preloadNextSong();
-        
-        // Reproduzir se estiver no modo de reprodução
         if (this.isPlaying && autoplay) {
-            const playPromise = this.audio.play();
-            
-            if (playPromise !== undefined) {
-                playPromise
-                    .then(() => {
-                        toggleLoading(false);
-                    })
-                    .catch(error => {
-                        toggleLoading(false);
-                        console.error("Erro ao reproduzir:", error);
-                    });
-            }
+            this.safePlay();
         } else {
             toggleLoading(false);
         }
     }
 
     updateAlbumCover(songName) {
-        // Verificar se já temos a imagem em cache
         if (this.cachedCovers.has(songName)) {
             const imgUrl = this.cachedCovers.get(songName);
             this.setNowPlayingCover(imgUrl);
             return;
         }
         
-        // Tentar carregar a imagem
         const img = new Image();
         let currentExtensionIndex = 0;
         
         const tryNextExtension = () => {
             if (currentExtensionIndex < this.imageExtensions.length) {
                 const ext = this.imageExtensions[currentExtensionIndex++];
-                img.src = `musicas/covers/${songName}.${ext}?t=${Date.now()}`;
+                img.src = `musicas/covers/${songName}.${ext}`;
             } else {
-                // Nenhuma extensão funcionou, usar placeholder
                 this.nowPlayingCover.innerHTML = '<div class="cover-placeholder">🎵</div>';
                 this.cachedCovers.set(songName, null);
             }
@@ -442,7 +441,6 @@ class MusicPlayer {
         
         img.onerror = tryNextExtension;
         
-        // Começar a tentar com a primeira extensão
         tryNextExtension();
     }
     
@@ -461,35 +459,9 @@ class MusicPlayer {
         img.src = src;
     }
 
-    preloadNextSong() {
-        // Determinar qual é a próxima música
-        let nextIndex;
-        if (this.shuffleMode && !this.repeatMode) {
-            // No modo shuffle, não sabemos qual será a próxima
-            return;
-        } else {
-            nextIndex = this.currentSongIndex + 1;
-            if (nextIndex >= this.songs.length) nextIndex = 0;
-        }
-        
-        // Pré-carregar a próxima música
-        const nextSong = this.songs[nextIndex];
-        const audio = new Audio();
-        audio.src = `musicas/${nextSong}`;
-        audio.preload = 'metadata';
-        
-        // Também pré-carregar a capa
-        const nextSongName = nextSong.replace('.mp3', '');
-        if (!this.cachedCovers.has(nextSongName)) {
-            const img = new Image();
-            img.src = `musicas/covers/${nextSongName}.avif`;
-            img.onload = () => {
-                this.cachedCovers.set(nextSongName, img.src);
-            };
-        }
-    }
-
     togglePlayPause() {
+        this.userInteracted = true;
+        
         if (this.audio.paused) {
             const playPromise = this.audio.play();
             
@@ -500,7 +472,7 @@ class MusicPlayer {
                     })
                     .catch(error => {
                         console.error("Erro ao reproduzir:", error);
-                        showToast('Erro ao reproduzir a música', 'error');
+                        showToast('Toque para reproduzir', 'error');
                     });
             }
         } else {
@@ -509,22 +481,24 @@ class MusicPlayer {
     }
 
     prevSong() {
+        this.userInteracted = true;
         let prevIndex = this.currentSongIndex - 1;
         if (prevIndex < 0) prevIndex = this.songs.length - 1;
         
         this.loadSong(prevIndex);
         if (this.isPlaying) {
-            this.audio.play().catch(e => console.error("Erro ao reproduzir:", e));
+            this.safePlay();
         }
     }
 
     nextSong() {
+        this.userInteracted = true;
         let nextIndex = this.currentSongIndex + 1;
         if (nextIndex >= this.songs.length) nextIndex = 0;
         
         this.loadSong(nextIndex);
         if (this.isPlaying) {
-            this.audio.play().catch(e => console.error("Erro ao reproduzir:", e));
+            this.safePlay();
         }
     }
 
@@ -557,29 +531,17 @@ class MusicPlayer {
 
 // Inicializar o player quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
-    // Verificar se há suporte para a API de áudio
     if (!window.AudioContext && !window.webkitAudioContext) {
         showToast('Seu navegador não suporta reprodução de áudio', 'error');
     }
     
-    // Inicializar o player
     window.musicPlayer = new MusicPlayer();
     
-    // Registrar eventos para PWA
-    window.addEventListener('beforeinstallprompt', (e) => {
-        // Prevenir que o prompt apareça automaticamente
-        e.preventDefault();
-        // Você pode armazenar este evento para mostrar o prompt mais tarde
-        window.deferredInstallPrompt = e;
-        
-        // Mostrar um botão de instalação personalizado
-        showToast('Instale este app para uma experiência melhor!');
-    });
-    
-    window.addEventListener('appinstalled', () => {
-        console.log('App instalado com sucesso!');
-        window.deferredInstallPrompt = null;
-    });
+    // Adicionar instrução de toque para mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+        showToast('Toque em qualquer lugar para ativar o áudio');
+    }
 });
 
 // Registrar o service worker
@@ -587,10 +549,10 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
         navigator.serviceWorker.register('./service-worker.js')
             .then(function(registration) {
-                console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                console.log('ServiceWorker registrado com sucesso: ', registration.scope);
             })
             .catch(function(error) {
-                console.log('ServiceWorker registration failed: ', error);
+                console.log('Falha no registro do ServiceWorker: ', error);
             });
     });
 }

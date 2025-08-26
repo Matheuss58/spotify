@@ -608,3 +608,79 @@ body {
         --background-light: #282828;
     }
 }
+
+/* Melhorias específicas para mobile */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    }
+    
+    .app-container {
+        max-width: 100%;
+    }
+    
+    .player {
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+    
+    #playlist {
+        max-height: 45vh;
+    }
+    
+    .player-controls {
+        margin: 15px 0;
+        padding: 0 5px;
+    }
+    
+    .control-btn {
+        width: 44px;
+        height: 44px;
+    }
+    
+    #playPauseBtn {
+        width: 56px;
+        height: 56px;
+    }
+    
+    .now-playing {
+        padding: 12px;
+    }
+}
+
+/* Melhorar feedback visual para toque */
+.control-btn.active,
+#playlist li.active {
+    transform: scale(0.95);
+    opacity: 0.8;
+}
+
+/* Garantir que os botões sejam acessíveis em mobile */
+.control-btn {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+/* Melhorar a área de toque para itens da playlist */
+#playlist li {
+    min-height: 60px;
+    padding: 12px 10px;
+}
+
+/* Ajustes para iOS */
+@supports (-webkit-touch-callout: none) {
+    .player-controls {
+        margin-bottom: calc(20px + env(safe-area-inset-bottom));
+    }
+    
+    .app-container {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+/* Prevenir seleção de texto acidental */
+.album-cover, .now-playing-cover, .control-btn {
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
