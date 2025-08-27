@@ -2,7 +2,7 @@
   "name": "Spotify Free",
   "short_name": "Spotify",
   "start_url": "./index.html",
-  "scope": "./",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#1DB954",
@@ -23,5 +23,6 @@
   ],
   "categories": ["music", "entertainment"],
   "orientation": "portrait",
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "offline_enabled": true
 }

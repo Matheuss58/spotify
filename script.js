@@ -556,3 +556,47 @@ if ('serviceWorker' in navigator) {
             });
     });
 }
+
+// Verificar status de conectividade
+function checkOnlineStatus() {
+  if (!navigator.onLine) {
+    showToast('Modo offline ativado', 'info');
+    
+    // Verificar se os recursos estão em cache
+    caches.has(CACHE_NAME).then(hasCache => {
+      if (!hasCache) {
+        showToast('Alguns recursos podem não estar disponíveis offline', 'error');
+      }
+    });
+  }
+}
+
+// Listeners para mudança de status de rede
+window.addEventListener('online', () => {
+  showToast('Conexão restaurada');
+});
+
+window.addEventListener('offline', () => {
+  showToast('Modo offline ativado', 'info');
+});
+
+// Verificar status inicial
+checkOnlineStatus();
+
+// Função para atualizar o cache manualmente
+async function updateCache() {
+  if ('caches' in window) {
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.addAll([...urlsToCache, ...musicFiles, ...coverFiles]);
+      showToast('Cache atualizado com sucesso');
+    } catch (error) {
+      showToast('Erro ao atualizar cache', 'error');
+    }
+  }
+}
+
+// Chamar esta função quando o usuário estiver online
+if (navigator.onLine) {
+  updateCache();
+}
