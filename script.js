@@ -72,6 +72,7 @@ class MusicPlayer {
 
         this.originalSongs = [
             'aguas-passadas.mp3',
+            'cavaleiro-da-lua.mp3',
             'amores-rasos.mp3',
             'andei.mp3',
             'cansado.mp3',

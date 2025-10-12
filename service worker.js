@@ -12,6 +12,7 @@ const urlsToCache = [
 // Adicione aqui as músicas e capas que deseja cachear
 const musicFiles = [
   'musicas/aguas-passadas.mp3',
+  'musicas/cavaleiro-da-lua',
   'musicas/amores-rasos.mp3',
   'musicas/andei.mp3',
   'musicas/cansado.mp3',
