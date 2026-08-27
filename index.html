@@ -1,155 +1,30 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>Spotify Free</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#1DB954">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Spotify Free">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="msapplication-TileColor" content="#1DB954">
-    <meta name="msapplication-tap-highlight" content="no">
-    <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="style.css">
-    
-    <!-- Pré-carregar recursos críticos -->
-    <link rel="preload" href="script.js" as="script">
-    <link rel="preload" href="style.css" as="style">
-
-    <!-- Preload de músicas críticas -->
-<link rel="preload" href="musicas/aguas-passadas.mp3" as="audio" type="audio/mpeg">
-<link rel="preload" href="musicas/amores-rasos.mp3" as="audio" type="audio/mpeg">
-
-<!-- Preload de capas -->
-<link rel="preload" href="musicas/covers/aguas-passadas.avif" as="image">
-<link rel="preload" href="musicas/covers/amores-rasos.avif" as="image">
-    
-    <!-- Ícones para iOS e Android -->
-    <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512x512.png">
-    
-    <!-- Splash screen para iOS -->
-    <link rel="apple-touch-startup-image" href="icons/splash.png">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#0b0d0c">
+  <meta name="description" content="Sua biblioteca de música local, privada e offline."><title>Localfy</title>
+  <link rel="manifest" href="manifest.json"><link rel="icon" href="icons/icon-192x192.png"><link rel="apple-touch-icon" href="icons/icon-192x192.png"><link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-container">
-        <header class="app-header">
-            <h1 class="title">SPOTIFY FREE</h1>
-            <button id="resetHistoryBtn" class="reset-btn" aria-label="Resetar histórico">
-                <svg viewBox="0 0 24 24" width="20" height="20">
-                    <path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-                </svg>
-            </button>
-        </header>
-        
-        <div class="player">
-            <ul id="playlist"></ul>
-        </div>
-        
-        <div class="player-controls">
-            <button id="shuffleBtn" class="control-btn" aria-label="Modo aleatório">
-                <svg viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
-                </svg>
-            </button>
-            <button id="prevBtn" class="control-btn" aria-label="Música anterior">
-                <svg viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
-                </svg>
-            </button>
-            <button id="playPauseBtn" class="control-btn main-btn" aria-label="Play/Pause">
-                <svg id="playIcon" viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M8 5v14l11-7z"/>
-                </svg>
-                <svg id="pauseIcon" viewBox="0 0 24 24" width="24" height="24" style="display:none">
-                    <path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-                </svg>
-            </button>
-            <button id="nextBtn" class="control-btn" aria-label="Próxima música">
-                <svg viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
-                </svg>
-            </button>
-            <button id="repeatBtn" class="control-btn" aria-label="Modo repetição">
-                <svg viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>
-                </svg>
-            </button>
-        </div>
-        
-        <div class="now-playing">
-            <div class="now-playing-info">
-                <div class="now-playing-cover" id="nowPlayingCover">
-                    <div class="cover-placeholder">🎵</div>
-                </div>
-                <div class="now-playing-text">
-                    <div class="now-playing-title" id="nowPlayingTitle">Nenhuma música</div>
-                    <div class="now-playing-artist" id="nowPlayingArtist">Artista</div>
-                </div>
-            </div>
-            <div class="progress-container">
-                <div class="progress-wrapper">
-                    <div class="progress-background"></div>
-                    <div class="progress-fill" id="progressFill"></div>
-                    <input type="range" id="progressBar" class="progress-bar" min="0" max="100" value="0" step="0.1" aria-label="Barra de progresso">
-                </div>
-                <div class="time-info">
-                    <span id="currentTime">0:00</span>
-                    <span id="duration">0:00</span>
-                </div>
-            </div>
-        </div>
-        
-        <audio id="audioPlayer" preload="metadata"></audio>
-        
-        <!-- Loading indicator -->
-        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
-            <div class="loading-spinner"></div>
-            <span>Carregando...</span>
-        </div>
-        
-        <!-- Toast container -->
-        <div id="toastContainer"></div>
-    </div>
-    
-    <script src="script.js" defer></script>
-    <!-- Service Worker -->
-    <script>
-        // Registrar Service Worker
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('./service-worker.js', { scope: './' })
-                    .then(reg => {
-                        console.log('✅ Service Worker registrado:', reg);
-                    })
-                    .catch(err => console.error('❌ Erro no Service Worker:', err));
-            });
-        }
-        
-        // Prevenir comportamento de pull-to-refresh em dispositivos móveis
-        document.addEventListener('touchstart', function(e) {
-            if (e.touches.length > 1) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-        
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', function(e) {
-            const now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
-                e.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, false);
-        
-        // Prevenir zoom com double-tap
-        document.addEventListener('touchend', function(e) {
-            if (e.touches && e.touches.length > 1) {
-                e.preventDefault();
-            }
-        }, false);
-    </script>
-</body>
-</html>
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="#"><span class="brand-mark">L</span><span>Localfy</span></a>
+    <nav class="nav-list" aria-label="Navegação"><button class="nav-item active" data-view="all"><span>⌂</span> Início</button><button class="nav-item" data-view="favorites"><span>♥</span> Favoritas</button><button class="nav-item" data-view="recent"><span>◷</span> Recentes</button></nav>
+    <div class="sidebar-heading"><span>Playlists</span><button id="newPlaylistBtn" class="icon-btn" aria-label="Nova playlist">＋</button></div><div id="playlistNav" class="playlist-nav"></div>
+    <div class="storage-card"><div class="storage-row"><span>Biblioteca local</span><span id="storageText">Calculando…</span></div><div class="storage-track"><span id="storageBar"></span></div><small>As músicas importadas ficam neste dispositivo.</small></div>
+  </aside>
+  <main class="content">
+    <header class="topbar"><button id="mobileMenuBtn" class="icon-btn mobile-only" aria-label="Abrir menu">☰</button><label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="Buscar músicas, artistas ou álbuns"></label><div class="top-actions"><span id="offlineBadge" class="offline-badge" hidden>Offline</span><button id="importBtn" class="primary-btn">＋ Importar música</button></div></header>
+    <section class="hero"><div><span class="eyebrow">SUA MÚSICA, SUAS REGRAS</span><h1 id="viewTitle">Boa noite</h1><p id="viewSubtitle">Sua biblioteca particular, disponível mesmo sem internet.</p></div><button id="playAllBtn" class="round-play" aria-label="Reproduzir tudo">▶</button></section>
+    <section class="stats"><div><strong id="songCount">0</strong><span>músicas</span></div><div><strong id="playlistCount">0</strong><span>playlists</span></div><div><strong id="totalDuration">0 min</strong><span>de áudio</span></div></section>
+    <section class="library-section"><div class="section-header"><div><h2 id="sectionTitle">Todas as músicas</h2><p id="resultCount">Carregando biblioteca…</p></div><select id="sortSelect"><option value="recent">Adicionadas recentemente</option><option value="title">Título</option><option value="artist">Artista</option></select></div>
+      <div class="track-table"><div class="track-head"><span>#</span><span>Título</span><span>Álbum</span><span>Adicionada</span><span>♡</span><span>⋯</span></div><div id="trackList" class="track-list"></div><div id="emptyState" class="empty-state" hidden><span>♫</span><h3>Nenhuma música por aqui</h3><p>Importe arquivos de áudio ou vídeo para começar.</p><button class="primary-btn" data-open-import>Importar agora</button></div></div>
+    </section>
+  </main>
+</div>
+<footer class="player-bar"><div class="now-playing"><div id="playerCover" class="player-cover">♫</div><div class="now-text"><strong id="playerTitle">Escolha uma música</strong><span id="playerArtist">Localfy</span></div><button id="playerFavorite" class="player-icon">♡</button></div><div class="player-center"><div class="player-controls"><button id="shuffleBtn" class="player-icon">⌘</button><button id="prevBtn" class="player-icon">◀</button><button id="playBtn" class="play-btn">▶</button><button id="nextBtn" class="player-icon">▶</button><button id="repeatBtn" class="player-icon">↻</button></div><div class="progress-row"><span id="currentTime">0:00</span><input id="progress" type="range" min="0" max="100" value="0" step="0.1"><span id="duration">0:00</span></div></div><div class="volume-control"><span>🔊</span><input id="volume" type="range" min="0" max="1" value="0.85" step="0.01"></div></footer>
+<audio id="audio" preload="metadata"></audio><input id="fileInput" type="file" accept="audio/*,video/mp4,.mp3,.mp4,.m4a,.wav,.ogg,.flac,.aac,.webm" multiple hidden>
+<dialog id="importDialog" class="modal"><form method="dialog" class="modal-card"><div class="modal-header"><div><span class="eyebrow">ADICIONAR À BIBLIOTECA</span><h2>Importar músicas</h2></div><button class="icon-btn" value="cancel">×</button></div><button id="chooseFilesBtn" type="button" class="drop-zone"><span>⇧</span><strong>Escolher arquivos</strong><small>MP3, MP4, M4A, WAV, OGG, FLAC, AAC ou WebM</small></button><div class="divider"><span>ou use um link direto</span></div><label class="field"><span>Link da música</span><div class="url-row"><input id="urlInput" type="url" placeholder="https://.../musica.mp3"><button id="urlImportBtn" type="button" class="primary-btn">Importar</button></div></label><p class="modal-note">Links diretos funcionam quando o site permite. Spotify e YouTube podem ser referências, mas não fornecem o arquivo ao navegador.</p><div id="importProgress" class="import-progress" hidden><span></span><p>Importando…</p></div></form></dialog>
+<dialog id="playlistDialog" class="modal small-modal"><form id="playlistForm" class="modal-card"><div class="modal-header"><h2>Nova playlist</h2><button type="button" class="icon-btn" data-close-playlist>×</button></div><label class="field"><span>Nome</span><input id="playlistName" maxlength="40" required placeholder="Ex.: Para trabalhar"></label><button class="primary-btn full" type="submit">Criar playlist</button></form></dialog>
+<div id="contextMenu" class="context-menu" hidden></div><div id="toastRegion" class="toast-region" aria-live="polite"></div><script src="script.js" defer></script>
+</body></html>

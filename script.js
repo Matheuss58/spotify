@@ -1,603 +1,92 @@
-// Função auxiliar para mostrar toast notifications
-function showToast(message, type = 'success') {
-    const toastContainer = document.getElementById('toastContainer') || document.body;
-    const existingToast = document.getElementById('app-toast');
-    
-    if (existingToast) {
-        existingToast.remove();
-    }
-    
-    const toast = document.createElement('div');
-    toast.id = 'app-toast';
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `
-        ${type === 'success' ? '✓' : '⚠'} 
-        <span>${message}</span>
-    `;
-    
-    toastContainer.appendChild(toast);
-    
-    // Auto-remover após 3 segundos
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
+'use strict';
+
+const BUNDLED = [
+  ['aguas-passadas','Águas Passadas','jpeg'],['amores-rasos','Amores Rasos','jpeg'],['andei','Andei','jpeg'],
+  ['cansado','Cansado','webp'],['cavaleiro-da-lua','Cavaleiro da Lua','jpg'],['eu-venci','Eu Venci','jpg'],
+  ['insuficiencia-cosmica','Insuficiência Cósmica','jpeg'],['judas','Judas','avif'],['melodias','Melodias','jpeg'],
+  ['morte','Morte','jpg'],['nuvens','Nuvens','jpeg'],['o-ciclo-odioso','O Ciclo Odioso','jpeg'],
+  ['querido-Deus','Querido Deus','jpg'],['sacrilegio-inepto','Sacrilégio Inepto','avif'],['trela','Trela','jpeg'],
+  ['vivendo-o-passado','Vivendo o Passado','jpeg']
+].map(([slug,title,cover],i)=>({id:`bundled:${slug}`,title,artist:'Matheus Galvão',album:'Biblioteca local',src:`musicas/${slug}.mp3`,cover:`musicas/covers/${slug}.${cover}`,addedAt:new Date(2025,9,12,i).toISOString(),favorite:false,bundled:true,duration:0}));
+
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const state={songs:[],playlists:[],view:'all',playlistId:null,query:'',sort:'recent',currentId:null,queue:[],queueIndex:-1,shuffle:false,repeat:0,objectUrl:null};
+const audio=$('#audio');
+
+const DB={
+  db:null,
+  open(){return new Promise((resolve,reject)=>{const req=indexedDB.open('localfy-library',2);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('tracks'))db.createObjectStore('tracks',{keyPath:'id'});};req.onsuccess=()=>{this.db=req.result;resolve()};req.onerror=()=>reject(req.error)})},
+  all(){return new Promise((resolve,reject)=>{const r=this.db.transaction('tracks').objectStore('tracks').getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})},
+  put(value){return new Promise((resolve,reject)=>{const r=this.db.transaction('tracks','readwrite').objectStore('tracks').put(value);r.onsuccess=resolve;r.onerror=()=>reject(r.error)})},
+  delete(id){return new Promise((resolve,reject)=>{const r=this.db.transaction('tracks','readwrite').objectStore('tracks').delete(id);r.onsuccess=resolve;r.onerror=()=>reject(r.error)})}
+};
+
+function loadSettings(){try{state.playlists=JSON.parse(localStorage.getItem('localfy-playlists'))||[]}catch{state.playlists=[]}const fav=JSON.parse(localStorage.getItem('localfy-favorites')||'[]');BUNDLED.forEach(s=>s.favorite=fav.includes(s.id));audio.volume=Number(localStorage.getItem('localfy-volume')||.85);$('#volume').value=audio.volume}
+function savePlaylists(){localStorage.setItem('localfy-playlists',JSON.stringify(state.playlists))}
+function saveFavorites(){localStorage.setItem('localfy-favorites',JSON.stringify(state.songs.filter(s=>s.favorite&&s.bundled).map(s=>s.id)))}
+function uid(){return `track:${Date.now()}:${crypto.randomUUID?.()||Math.random().toString(36).slice(2)}`}
+function cleanName(name){return name.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim().replace(/\b\w/g,c=>c.toUpperCase())}
+function formatTime(sec){if(!Number.isFinite(sec))return '0:00';const m=Math.floor(sec/60),s=Math.floor(sec%60);return `${m}:${String(s).padStart(2,'0')}`}
+function formatDate(date){const d=new Date(date);return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:d.getFullYear()===new Date().getFullYear()?undefined:'numeric'}).replace('.','')}
+function bytes(n){if(!n)return '0 MB';return `${(n/1048576).toFixed(n>104857600?0:1)} MB`}
+function escapeHtml(v=''){const d=document.createElement('div');d.textContent=v;return d.innerHTML}
+function toast(message,type='ok'){const el=document.createElement('div');el.className=`toast ${type==='error'?'error':''}`;el.textContent=message;$('#toastRegion').append(el);setTimeout(()=>el.remove(),3200)}
+
+async function init(){
+  loadSettings();
+  try{await DB.open();const imported=await DB.all();state.songs=[...BUNDLED,...imported]}catch(e){console.error(e);state.songs=[...BUNDLED];toast('O armazenamento local não pôde ser aberto.','error')}
+  bind();render();updateNetwork();registerServiceWorker();hydrateDurations();
 }
 
-// Função para mostrar/ocultar loading
-function toggleLoading(show) {
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    if (loadingIndicator) {
-        loadingIndicator.style.display = show ? 'flex' : 'none';
-    }
+function bind(){
+  $('#importBtn').onclick=openImport;$$('[data-open-import]').forEach(b=>b.onclick=openImport);$('#chooseFilesBtn').onclick=()=>$('#fileInput').click();$('#fileInput').onchange=e=>importFiles([...e.target.files]);
+  $('#urlImportBtn').onclick=importUrl;$('#newPlaylistBtn').onclick=()=>{ $('#playlistDialog').showModal();setTimeout(()=>$('#playlistName').focus(),50)}; $('[data-close-playlist]').onclick=()=>$('#playlistDialog').close();
+  $('#playlistForm').onsubmit=e=>{e.preventDefault();const name=$('#playlistName').value.trim();if(!name)return;state.playlists.push({id:crypto.randomUUID(),name,trackIds:[]});savePlaylists();$('#playlistName').value='';$('#playlistDialog').close();render();toast('Playlist criada')};
+  $('#searchInput').oninput=e=>{state.query=e.target.value.trim().toLowerCase();renderTracks()};$('#sortSelect').onchange=e=>{state.sort=e.target.value;renderTracks()};
+  $$('.nav-item').forEach(b=>b.onclick=()=>selectView(b.dataset.view));$('#mobileMenuBtn').onclick=()=>$('.sidebar').classList.toggle('open');
+  $('#playAllBtn').onclick=()=>{const list=filteredSongs();if(list.length)playSong(list[0].id,list.map(s=>s.id))};
+  $('#playBtn').onclick=togglePlay;$('#prevBtn').onclick=previous;$('#nextBtn').onclick=next;$('#shuffleBtn').onclick=()=>{state.shuffle=!state.shuffle;$('#shuffleBtn').classList.toggle('active',state.shuffle);toast(state.shuffle?'Modo aleatório ativado':'Modo aleatório desativado')};
+  $('#repeatBtn').onclick=()=>{state.repeat=(state.repeat+1)%3;$('#repeatBtn').classList.toggle('active',state.repeat>0);$('#repeatBtn').textContent=state.repeat===2?'↻¹':'↻';toast(['Repetição desativada','Repetir fila','Repetir música'][state.repeat])};
+  $('#playerFavorite').onclick=()=>state.currentId&&toggleFavorite(state.currentId);$('#progress').oninput=e=>{if(audio.duration)audio.currentTime=(e.target.value/100)*audio.duration};
+  $('#volume').oninput=e=>{audio.volume=Number(e.target.value);localStorage.setItem('localfy-volume',audio.volume)};
+  audio.ontimeupdate=()=>{$('#currentTime').textContent=formatTime(audio.currentTime);$('#duration').textContent=formatTime(audio.duration);$('#progress').value=audio.duration?(audio.currentTime/audio.duration)*100:0};
+  audio.onplay=()=>{$('#playBtn').textContent='❚❚';renderTracks()};audio.onpause=()=>{$('#playBtn').textContent='▶';renderTracks()};audio.onended=()=>state.repeat===2?(audio.currentTime=0,audio.play()):next();audio.onerror=()=>toast('Não foi possível reproduzir esta faixa.','error');
+  window.addEventListener('online',updateNetwork);window.addEventListener('offline',updateNetwork);document.addEventListener('click',e=>{if(!e.target.closest('.context-menu')&&!e.target.closest('.more-btn'))$('#contextMenu').hidden=true});
 }
 
-// Função para lidar com erro de carregamento de imagem
-function handleImageError(imgElement, songName) {
-    const extensions = ['avif', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];
-    let currentExtensionIndex = 0;
-    
-    function tryNextExtension() {
-        if (currentExtensionIndex < extensions.length) {
-            const ext = extensions[currentExtensionIndex++];
-            imgElement.src = `musicas/covers/${songName}.${ext}?t=${Date.now()}`;
-            imgElement.onerror = tryNextExtension;
-        } else {
-            imgElement.parentElement.innerHTML = '<div class="cover-placeholder">🎵</div>';
-        }
-    }
-    
-    tryNextExtension();
+function selectView(view,playlistId=null){state.view=view;state.playlistId=playlistId;$$('.nav-item,.playlist-item').forEach(x=>x.classList.toggle('active',x.dataset.view===view&&(view!=='playlist'||x.dataset.id===playlistId)));$('.sidebar').classList.remove('open');renderTracks();renderHeading()}
+function filteredSongs(){let list=[...state.songs];if(state.view==='favorites')list=list.filter(s=>s.favorite);if(state.view==='recent')list=list.filter(s=>Date.now()-new Date(s.addedAt).getTime()<1000*60*60*24*30);if(state.view==='playlist'){const p=state.playlists.find(p=>p.id===state.playlistId);list=list.filter(s=>p?.trackIds.includes(s.id))}if(state.query)list=list.filter(s=>`${s.title} ${s.artist} ${s.album}`.toLowerCase().includes(state.query));list.sort(state.sort==='title'?(a,b)=>a.title.localeCompare(b.title):state.sort==='artist'?(a,b)=>a.artist.localeCompare(b.artist):((a,b)=>new Date(b.addedAt)-new Date(a.addedAt)));return list}
+function render(){renderPlaylistNav();renderTracks();renderHeading();updateStats();updateStorage();updatePlayer()}
+function renderHeading(){const map={all:['Todas as músicas','Sua biblioteca particular, disponível mesmo sem internet.'],favorites:['Favoritas','As músicas que você mais gosta.'],recent:['Adicionadas recentemente','Tudo o que chegou à biblioteca nos últimos 30 dias.']};let [title,subtitle]=map[state.view]||['Playlist','Sua seleção personalizada.'];if(state.view==='playlist')title=state.playlists.find(p=>p.id===state.playlistId)?.name||'Playlist';$('#sectionTitle').textContent=title;$('#viewTitle').textContent=state.view==='all'?greeting():title;$('#viewSubtitle').textContent=subtitle}
+function greeting(){const h=new Date().getHours();return h<12?'Bom dia':h<18?'Boa tarde':'Boa noite'}
+function renderPlaylistNav(){$('#playlistNav').innerHTML=state.playlists.map(p=>`<button class="playlist-item" data-view="playlist" data-id="${p.id}"><span>♫</span>${escapeHtml(p.name)}</button>`).join('');$$('.playlist-item').forEach(b=>b.onclick=()=>selectView('playlist',b.dataset.id));$('#playlistCount').textContent=state.playlists.length}
+function renderTracks(){const list=filteredSongs();$('#resultCount').textContent=`${list.length} ${list.length===1?'faixa':'faixas'}`;$('#emptyState').hidden=list.length>0;$('#trackList').innerHTML=list.map((s,i)=>`<div class="track ${state.currentId===s.id?'active':''}" data-id="${s.id}" tabindex="0"><span class="track-index">${state.currentId===s.id&&!audio.paused?'♪':i+1}</span><div class="track-main"><div class="track-cover">${s.cover?`<img src="${s.cover}" alt="" loading="lazy">`:'♫'}</div><div class="track-copy"><span class="track-title">${escapeHtml(s.title)}</span><span class="track-artist">${escapeHtml(s.artist||'Artista desconhecido')}</span></div></div><span class="track-album">${escapeHtml(s.album||'Sem álbum')}</span><span class="track-date">${formatDate(s.addedAt)}</span><button class="heart ${s.favorite?'on':''}" aria-label="Favoritar">${s.favorite?'♥':'♡'}</button><button class="more-btn" aria-label="Mais opções">⋯</button></div>`).join('');
+  $$('.track').forEach(row=>{row.ondblclick=()=>playSong(row.dataset.id,list.map(s=>s.id));row.onkeydown=e=>{if(e.key==='Enter')playSong(row.dataset.id,list.map(s=>s.id))};row.querySelector('.track-main').onclick=()=>playSong(row.dataset.id,list.map(s=>s.id));row.querySelector('.track-index').onclick=()=>playSong(row.dataset.id,list.map(s=>s.id));row.querySelector('.heart').onclick=e=>{e.stopPropagation();toggleFavorite(row.dataset.id)};row.querySelector('.more-btn').onclick=e=>{e.stopPropagation();showMenu(e,row.dataset.id)}})
 }
+function updateStats(){$('#songCount').textContent=state.songs.length;const total=state.songs.reduce((a,s)=>a+(s.duration||0),0);$('#totalDuration').textContent=total?`${Math.round(total/60)} min`:'—'}
 
-class MusicPlayer {
-    constructor() {
-        this.audio = document.getElementById('audioPlayer');
-        this.playlistElement = document.getElementById('playlist');
-        this.playPauseBtn = document.getElementById('playPauseBtn');
-        this.playIcon = document.getElementById('playIcon');
-        this.pauseIcon = document.getElementById('pauseIcon');
-        this.prevBtn = document.getElementById('prevBtn');
-        this.nextBtn = document.getElementById('nextBtn');
-        this.shuffleBtn = document.getElementById('shuffleBtn');
-        this.repeatBtn = document.getElementById('repeatBtn');
-        this.resetHistoryBtn = document.getElementById('resetHistoryBtn');
-        this.progressBar = document.getElementById('progressBar');
-        this.progressFill = document.getElementById('progressFill');
-        this.currentTimeEl = document.getElementById('currentTime');
-        this.durationEl = document.getElementById('duration');
-        this.nowPlayingTitle = document.getElementById('nowPlayingTitle');
-        this.nowPlayingArtist = document.getElementById('nowPlayingArtist');
-        this.nowPlayingCover = document.getElementById('nowPlayingCover');
+async function playSong(id,queue){const song=state.songs.find(s=>s.id===id);if(!song)return;if(state.objectUrl){URL.revokeObjectURL(state.objectUrl);state.objectUrl=null}state.currentId=id;state.queue=queue||filteredSongs().map(s=>s.id);state.queueIndex=state.queue.indexOf(id);audio.src=song.blob?(state.objectUrl=URL.createObjectURL(song.blob)):song.src;audio.load();try{await audio.play()}catch{toast('Toque novamente para reproduzir.','error')}song.lastPlayed=Date.now();if(!song.bundled)DB.put(song);updatePlayer();renderTracks();updateMediaSession(song)}
+function togglePlay(){if(!state.currentId){const list=filteredSongs();if(list.length)playSong(list[0].id,list.map(s=>s.id));return}audio.paused?audio.play():audio.pause()}
+function next(){if(!state.queue.length)return;if(state.shuffle)state.queueIndex=Math.floor(Math.random()*state.queue.length);else state.queueIndex++;if(state.queueIndex>=state.queue.length){if(state.repeat===1)state.queueIndex=0;else{state.queueIndex=state.queue.length-1;audio.pause();return}}playSong(state.queue[state.queueIndex],state.queue)}
+function previous(){if(audio.currentTime>4){audio.currentTime=0;return}state.queueIndex=Math.max(0,state.queueIndex-1);playSong(state.queue[state.queueIndex],state.queue)}
+function updatePlayer(){const s=state.songs.find(s=>s.id===state.currentId);if(!s)return;$('#playerTitle').textContent=s.title;$('#playerArtist').textContent=s.artist||'Artista desconhecido';$('#playerCover').innerHTML=s.cover?`<img src="${s.cover}" alt="">`:'♫';$('#playerFavorite').textContent=s.favorite?'♥':'♡';$('#playerFavorite').classList.toggle('active',s.favorite)}
+async function toggleFavorite(id){const s=state.songs.find(s=>s.id===id);if(!s)return;s.favorite=!s.favorite;if(s.bundled)saveFavorites();else await DB.put(s);updatePlayer();renderTracks()}
 
-        this.originalSongs = [
-            'aguas-passadas.mp3',
-            'cavaleiro-da-lua.mp3',
-            'amores-rasos.mp3',
-            'andei.mp3',
-            'cansado.mp3',
-            'eu-venci.mp3',
-            'insuficiencia-cosmica.mp3',
-            'judas.mp3',
-            'melodias.mp3',
-            'morte.mp3',
-            'nuvens.mp3',
-            'o-ciclo-odioso.mp3',
-            'sacrilegio-inepto.mp3',
-            'trela.mp3',
-            'vivendo-o-passado.mp3',
-            'querido-Deus.mp3'
-        ];
+function showMenu(e,id){const song=state.songs.find(s=>s.id===id),menu=$('#contextMenu');menu.innerHTML=`<button data-action="play">▶ Reproduzir agora</button>${state.playlists.map(p=>`<button data-playlist="${p.id}">＋ ${escapeHtml(p.name)}</button>`).join('')}<button data-action="favorite">${song.favorite?'♡ Remover das favoritas':'♥ Adicionar às favoritas'}</button>${song.bundled?'':'<button class="danger" data-action="delete">Excluir da biblioteca</button>'}`;menu.hidden=false;menu.style.left=`${Math.min(e.clientX,innerWidth-225)}px`;menu.style.top=`${Math.min(e.clientY,innerHeight-menu.offsetHeight-15)}px`;menu.onclick=async ev=>{const b=ev.target.closest('button');if(!b)return;if(b.dataset.action==='play')playSong(id);if(b.dataset.action==='favorite')toggleFavorite(id);if(b.dataset.playlist)addToPlaylist(id,b.dataset.playlist);if(b.dataset.action==='delete')await deleteSong(id);menu.hidden=true}}
+function addToPlaylist(trackId,playlistId){const p=state.playlists.find(p=>p.id===playlistId);if(!p)return;if(!p.trackIds.includes(trackId))p.trackIds.push(trackId);savePlaylists();toast(`Adicionada a “${p.name}”`)}
+async function deleteSong(id){const song=state.songs.find(s=>s.id===id);if(!song||song.bundled)return;if(!confirm(`Excluir “${song.title}” deste dispositivo?`))return;if(state.currentId===id){audio.pause();audio.removeAttribute('src');state.currentId=null}await DB.delete(id);state.songs=state.songs.filter(s=>s.id!==id);state.playlists.forEach(p=>p.trackIds=p.trackIds.filter(x=>x!==id));savePlaylists();render();toast('Música excluída')}
 
-        // Inicializa as estruturas de dados
-        this.songs = [...this.originalSongs];
-        this.playedSongs = new Set();
-        this.currentSongIndex = 0;
-        this.isPlaying = false;
-        this.shuffleMode = false;
-        this.repeatMode = false;
-        this.isSeeking = false;
-        this.imageExtensions = ['avif', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];
-        this.cachedCovers = new Map();
-        this.userInteracted = false; // Nova flag para controle de interação
+function openImport(){$('#importDialog').showModal()}
+async function importFiles(files){const valid=files.filter(f=>f.type.startsWith('audio/')||f.type.startsWith('video/')||/\.(mp3|mp4|m4a|wav|ogg|flac|aac|webm)$/i.test(f.name));if(!valid.length){toast('Escolha um arquivo de áudio ou vídeo compatível.','error');return}setImporting(true);let count=0;for(const file of valid){try{const meta=await inspectFile(file);const song={id:uid(),title:cleanName(file.name),artist:'Artista desconhecido',album:'Importados',addedAt:new Date().toISOString(),favorite:false,bundled:false,duration:meta.duration||0,blob:file,originalName:file.name,size:file.size};await DB.put(song);state.songs.push(song);count++}catch(e){console.error(e)}}setImporting(false);$('#fileInput').value='';$('#importDialog').close();render();toast(`${count} ${count===1?'música importada':'músicas importadas'}`)}
+function inspectFile(file){return new Promise(resolve=>{const a=document.createElement('audio'),url=URL.createObjectURL(file),done=()=>{URL.revokeObjectURL(url);resolve({duration:Number.isFinite(a.duration)?a.duration:0})};a.preload='metadata';a.onloadedmetadata=done;a.onerror=done;a.src=url;setTimeout(done,4000)})}
+async function importUrl(){const raw=$('#urlInput').value.trim();let url;try{url=new URL(raw)}catch{toast('Digite um link válido.','error');return}if(/(youtube\.com|youtu\.be|spotify\.com)/i.test(url.hostname)){toast('Esse serviço não entrega o arquivo de áudio ao PWA. Baixe uma cópia autorizada e importe o arquivo.','error');return}setImporting(true);try{const res=await fetch(url);if(!res.ok)throw new Error();const blob=await res.blob();if(!blob.type.startsWith('audio/')&&!blob.type.startsWith('video/'))throw new Error();const name=decodeURIComponent(url.pathname.split('/').pop()||'Música importada');await importFiles([new File([blob],name,{type:blob.type})]);$('#urlInput').value=''}catch{setImporting(false);toast('O link não permitiu baixar o áudio. Tente importar o arquivo.','error')}}
+function setImporting(on){$('#importProgress').hidden=!on;$('#chooseFilesBtn').disabled=on;$('#urlImportBtn').disabled=on}
 
-        this.init();
-    }
+async function hydrateDurations(){for(const song of BUNDLED){const a=document.createElement('audio');a.preload='metadata';a.src=song.src;a.onloadedmetadata=()=>{song.duration=a.duration;updateStats()}}}
+async function updateStorage(){if(!navigator.storage?.estimate)return;const {usage=0,quota=0}=await navigator.storage.estimate();$('#storageText').textContent=`${bytes(usage)} usados`;$('#storageBar').style.width=`${Math.min(100,usage/quota*100)||0}%`}
+function updateNetwork(){$('#offlineBadge').hidden=navigator.onLine}
+function updateMediaSession(song){if(!('mediaSession'in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:song.title,artist:song.artist,album:song.album,artwork:song.cover?[{src:song.cover}]:[]});navigator.mediaSession.setActionHandler('play',()=>audio.play());navigator.mediaSession.setActionHandler('pause',()=>audio.pause());navigator.mediaSession.setActionHandler('previoustrack',previous);navigator.mediaSession.setActionHandler('nexttrack',next)}
+function registerServiceWorker(){if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(console.error))}
 
-    init() {
-        this.setupEventListeners();
-        this.renderPlaylist();
-        this.loadSong(this.currentSongIndex, false);
-        this.setupMobileControls();
-        this.setupMediaSession();
-        
-        // Adicionar listener de interação do usuário
-        this.setupUserInteraction();
-    }
-
-    setupUserInteraction() {
-        // Marcar que o usuário interagiu com a página
-        const interactionEvents = ['click', 'touchstart', 'keydown'];
-        
-        interactionEvents.forEach(event => {
-            document.addEventListener(event, () => {
-                this.userInteracted = true;
-            }, { once: true, passive: true });
-        });
-    }
-
-    setupMediaSession() {
-        if ('mediaSession' in navigator) {
-            const songName = this.songs[this.currentSongIndex].replace('.mp3', '');
-            
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: songName,
-                artist: "Matheus Galvão",
-                artwork: [
-                    { src: 'icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
-                    { src: 'icons/icon-512x512.png', sizes: '512x512', type: 'image/png' }
-                ]
-            });
-
-            navigator.mediaSession.setActionHandler('play', () => {
-                this.togglePlayPause();
-            });
-
-            navigator.mediaSession.setActionHandler('pause', () => {
-                this.togglePlayPause();
-            });
-
-            navigator.mediaSession.setActionHandler('previoustrack', () => {
-                this.prevSong();
-            });
-
-            navigator.mediaSession.setActionHandler('nexttrack', () => {
-                this.nextSong();
-            });
-
-            this.audio.addEventListener('play', () => {
-                navigator.mediaSession.playbackState = 'playing';
-            });
-
-            this.audio.addEventListener('pause', () => {
-                navigator.mediaSession.playbackState = 'paused';
-            });
-        }
-    }
-
-    setupEventListeners() {
-        this.playPauseBtn.addEventListener('click', () => this.togglePlayPause());
-        this.prevBtn.addEventListener('click', () => this.prevSong());
-        this.nextBtn.addEventListener('click', () => this.nextSong());
-        this.shuffleBtn.addEventListener('click', () => this.toggleShuffle());
-        this.repeatBtn.addEventListener('click', () => this.toggleRepeat());
-        this.resetHistoryBtn.addEventListener('click', () => this.resetHistory());
-        
-        // Barra de progresso melhorada
-        this.progressBar.addEventListener('input', () => {
-            this.isSeeking = true;
-            this.seek();
-        });
-        
-        this.progressBar.addEventListener('change', () => {
-            this.isSeeking = false;
-        });
-        
-        this.audio.addEventListener('timeupdate', () => this.updateProgress());
-        this.audio.addEventListener('loadedmetadata', () => this.updateDuration());
-        this.audio.addEventListener('ended', () => this.handleSongEnd());
-        this.audio.addEventListener('play', () => {
-            this.isPlaying = true;
-            this.playIcon.style.display = 'none';
-            this.pauseIcon.style.display = 'block';
-            this.nowPlayingCover.classList.add('playing');
-        });
-        this.audio.addEventListener('pause', () => {
-            this.isPlaying = false;
-            this.playIcon.style.display = 'block';
-            this.pauseIcon.style.display = 'none';
-            this.nowPlayingCover.classList.remove('playing');
-        });
-        
-        this.audio.addEventListener('waiting', () => {
-            toggleLoading(true);
-        });
-        
-        this.audio.addEventListener('canplay', () => {
-            toggleLoading(false);
-        });
-        
-        this.audio.addEventListener('error', (e) => {
-            toggleLoading(false);
-            console.error('Erro no áudio:', e);
-            showToast('Erro ao carregar a música', 'error');
-        });
-    }
-
-    setupMobileControls() {
-        const buttons = [this.playPauseBtn, this.prevBtn, this.nextBtn, this.shuffleBtn, this.repeatBtn, this.resetHistoryBtn];
-        
-        buttons.forEach(btn => {
-            // Touch events para mobile
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                btn.classList.add('active');
-            });
-            
-            btn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                btn.classList.remove('active');
-                btn.click(); // Disparar o click normal
-            });
-            
-            btn.addEventListener('touchcancel', (e) => {
-                e.preventDefault();
-                btn.classList.remove('active');
-            });
-        });
-        
-        // Melhorar a experiência de toque na playlist
-        const playlistItems = this.playlistElement;
-        playlistItems.addEventListener('touchstart', (e) => {
-            if (e.target.closest('li')) {
-                e.target.closest('li').classList.add('active');
-            }
-        });
-        
-        playlistItems.addEventListener('touchend', (e) => {
-            if (e.target.closest('li')) {
-                e.target.closest('li').classList.remove('active');
-            }
-        });
-    }
-
-    toggleShuffle() {
-        this.shuffleMode = !this.shuffleMode;
-        this.shuffleBtn.classList.toggle('active', this.shuffleMode);
-        
-        if (this.shuffleMode) {
-            const currentSong = this.songs[this.currentSongIndex];
-            const otherSongs = this.songs.filter((_, index) => index !== this.currentSongIndex);
-            const shuffledOthers = this.shuffleArray(otherSongs);
-            
-            this.songs = [currentSong, ...shuffledOthers];
-            this.currentSongIndex = 0;
-            showToast('Modo aleatório ativado');
-        } else {
-            const currentSong = this.songs[this.currentSongIndex];
-            this.songs = [...this.originalSongs];
-            this.currentSongIndex = this.songs.indexOf(currentSong);
-            showToast('Modo aleatório desativado');
-        }
-        
-        this.renderPlaylist();
-    }
-
-    toggleRepeat() {
-        this.repeatMode = !this.repeatMode;
-        this.repeatBtn.classList.toggle('active', this.repeatMode);
-        showToast(this.repeatMode ? 'Repetir ativado' : 'Repetir desativado');
-    }
-
-    resetHistory() {
-        this.playedSongs.clear();
-        this.renderPlaylist();
-        showToast('Histórico reiniciado');
-    }
-
-    shuffleArray(array) {
-        const newArray = [...array];
-        for (let i = newArray.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-        }
-        return newArray;
-    }
-
-    handleSongEnd() {
-        this.playedSongs.add(this.songs[this.currentSongIndex]);
-        
-        if (this.repeatMode) {
-            this.audio.currentTime = 0;
-            this.safePlay();
-        } else if (this.shuffleMode) {
-            this.playRandomSong();
-        } else {
-            this.nextSong();
-        }
-        
-        this.renderPlaylist();
-    }
-
-    playRandomSong() {
-        let availableSongs = this.songs.filter(
-            (song, index) => index !== this.currentSongIndex && !this.playedSongs.has(song)
-        );
-
-        if (availableSongs.length === 0) {
-            this.playedSongs.clear();
-            availableSongs = this.songs.filter((_, index) => index !== this.currentSongIndex);
-        }
-
-        const randomSong = availableSongs[
-            Math.floor(Math.random() * availableSongs.length)
-        ];
-        
-        const nextIndex = this.songs.indexOf(randomSong);
-        this.currentSongIndex = nextIndex;
-        
-        this.loadSong(this.currentSongIndex);
-        this.safePlay();
-    }
-
-    safePlay() {
-        if (this.userInteracted) {
-            const playPromise = this.audio.play();
-            
-            if (playPromise !== undefined) {
-                playPromise
-                    .then(() => {
-                        // Reprodução iniciada com sucesso
-                    })
-                    .catch(error => {
-                        console.error("Erro ao reproduzir:", error);
-                        showToast('Toque para reproduzir', 'error');
-                    });
-            }
-        } else {
-            showToast('Toque em qualquer lugar para ativar o áudio', 'error');
-        }
-    }
-
-    renderPlaylist() {
-        this.playlistElement.innerHTML = '';
-        
-        this.songs.forEach((song, index) => {
-            const li = document.createElement('li');
-            const songName = song.replace('.mp3', '');
-            const isPlayed = this.playedSongs.has(song);
-            
-            li.innerHTML = `
-                <div class="album-cover">
-                    <img src="musicas/covers/${songName}.avif" alt="${songName}" 
-                         onerror="handleImageError(this, '${songName}')">
-                </div>
-                <div class="song-info">
-                    <div class="song-title">${songName}</div>
-                    <div class="song-artist">Matheus Galvão</div>
-                </div>
-            `;
-            
-            if (isPlayed) {
-                li.classList.add('played');
-            }
-            
-            if (index === this.currentSongIndex) {
-                li.classList.add('current');
-            }
-            
-            li.addEventListener('click', () => {
-                this.userInteracted = true;
-                this.loadSong(index);
-            });
-            this.playlistElement.appendChild(li);
-        });
-    }
-    
-    loadSong(index, autoplay = true) {
-        this.currentSongIndex = index;
-        const song = this.songs[index];
-        const songName = song.replace('.mp3', '');
-        
-        toggleLoading(true);
-        
-        this.audio.src = `musicas/${song}`;
-        this.audio.load();
-        
-        this.nowPlayingTitle.textContent = songName;
-        this.nowPlayingArtist.textContent = 'Matheus Galvão';
-        
-        this.updateAlbumCover(songName);
-        
-        const items = this.playlistElement.querySelectorAll('li');
-        items.forEach((item, i) => {
-            item.classList.toggle('current', i === index);
-        });
-        
-        items[index]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        
-        this.setupMediaSession();
-        
-        if (this.isPlaying && autoplay) {
-            this.safePlay();
-        } else {
-            toggleLoading(false);
-        }
-    }
-
-    updateAlbumCover(songName) {
-        if (this.cachedCovers.has(songName)) {
-            const imgUrl = this.cachedCovers.get(songName);
-            this.setNowPlayingCover(imgUrl);
-            return;
-        }
-        
-        const img = new Image();
-        let currentExtensionIndex = 0;
-        
-        const tryNextExtension = () => {
-            if (currentExtensionIndex < this.imageExtensions.length) {
-                const ext = this.imageExtensions[currentExtensionIndex++];
-                img.src = `musicas/covers/${songName}.${ext}`;
-            } else {
-                this.nowPlayingCover.innerHTML = '<div class="cover-placeholder">🎵</div>';
-                this.cachedCovers.set(songName, null);
-            }
-        };
-        
-        img.onload = () => {
-            this.setNowPlayingCover(img.src);
-            this.cachedCovers.set(songName, img.src);
-        };
-        
-        img.onerror = tryNextExtension;
-        
-        tryNextExtension();
-    }
-    
-    setNowPlayingCover(src) {
-        if (!src) {
-            this.nowPlayingCover.innerHTML = '<div class="cover-placeholder">🎵</div>';
-            return;
-        }
-        
-        let img = this.nowPlayingCover.querySelector('img');
-        if (!img) {
-            img = document.createElement('img');
-            this.nowPlayingCover.innerHTML = '';
-            this.nowPlayingCover.appendChild(img);
-        }
-        img.src = src;
-    }
-
-    togglePlayPause() {
-        this.userInteracted = true;
-        
-        if (this.audio.paused) {
-            const playPromise = this.audio.play();
-            
-            if (playPromise !== undefined) {
-                playPromise
-                    .then(() => {
-                        // Reprodução iniciada com sucesso
-                    })
-                    .catch(error => {
-                        console.error("Erro ao reproduzir:", error);
-                        showToast('Toque para reproduzir', 'error');
-                    });
-            }
-        } else {
-            this.audio.pause();
-        }
-    }
-
-    prevSong() {
-        this.userInteracted = true;
-        let prevIndex = this.currentSongIndex - 1;
-        if (prevIndex < 0) prevIndex = this.songs.length - 1;
-        
-        this.loadSong(prevIndex);
-        if (this.isPlaying) {
-            this.safePlay();
-        }
-    }
-
-    nextSong() {
-        this.userInteracted = true;
-        let nextIndex = this.currentSongIndex + 1;
-        if (nextIndex >= this.songs.length) nextIndex = 0;
-        
-        this.loadSong(nextIndex);
-        if (this.isPlaying) {
-            this.safePlay();
-        }
-    }
-
-    updateProgress() {
-        if (!this.isSeeking && !isNaN(this.audio.duration)) {
-            const progress = (this.audio.currentTime / this.audio.duration) * 100;
-            this.progressBar.value = progress;
-            this.progressFill.style.width = `${progress}%`;
-            this.currentTimeEl.textContent = this.formatTime(this.audio.currentTime);
-        }
-    }
-
-    updateDuration() {
-        if (!isNaN(this.audio.duration)) {
-            this.durationEl.textContent = this.formatTime(this.audio.duration);
-        }
-    }
-
-    seek() {
-        const seekTime = (this.progressBar.value / 100) * this.audio.duration;
-        this.audio.currentTime = seekTime;
-    }
-
-    formatTime(seconds) {
-        const minutes = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
-    }
-}
-
-// Inicializar o player quando o DOM estiver pronto
-document.addEventListener('DOMContentLoaded', () => {
-    if (!window.AudioContext && !window.webkitAudioContext) {
-        showToast('Seu navegador não suporta reprodução de áudio', 'error');
-    }
-    
-    window.musicPlayer = new MusicPlayer();
-    
-    // Adicionar instrução de toque para mobile
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (isMobile) {
-        showToast('Toque em qualquer lugar para ativar o áudio');
-    }
-});
-
-// Registrar o service worker
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./service-worker.js')
-            .then(function(registration) {
-                console.log('ServiceWorker registrado com sucesso: ', registration.scope);
-            })
-            .catch(function(error) {
-                console.log('Falha no registro do ServiceWorker: ', error);
-            });
-    });
-}
-
-// Verificar status de conectividade
-function checkOnlineStatus() {
-  if (!navigator.onLine) {
-    showToast('Modo offline ativado', 'info');
-    
-    // Verificar se os recursos estão em cache
-    caches.has(CACHE_NAME).then(hasCache => {
-      if (!hasCache) {
-        showToast('Alguns recursos podem não estar disponíveis offline', 'error');
-      }
-    });
-  }
-}
-
-// Listeners para mudança de status de rede
-window.addEventListener('online', () => {
-  showToast('Conexão restaurada');
-});
-
-window.addEventListener('offline', () => {
-  showToast('Modo offline ativado', 'info');
-});
-
-// Verificar status inicial
-checkOnlineStatus();
-
-// Função para atualizar o cache manualmente
-async function updateCache() {
-  if ('caches' in window) {
-    try {
-      const cache = await caches.open(CACHE_NAME);
-      await cache.addAll([...urlsToCache, ...musicFiles, ...coverFiles]);
-      showToast('Cache atualizado com sucesso');
-    } catch (error) {
-      showToast('Erro ao atualizar cache', 'error');
-    }
-  }
-}
-
-// Chamar esta função quando o usuário estiver online
-if (navigator.onLine) {
-  updateCache();
-}
+init();
