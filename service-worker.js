@@ -1,5 +1,5 @@
-const CACHE='localfy-shell-v3';
-const SHELL=['./','./index.html','./style.css','./sync-config.js','./sync.js','./script.js','./manifest.json','./icons/icon-192x192.png','./icons/icon-512x512.png'];
+const CACHE='localfy-shell-v4';
+const SHELL=['./','./index.html','./style.css','./sync-config.js?v=20260828-1','./sync.js','./script.js','./manifest.json','./icons/icon-192x192.png','./icons/icon-512x512.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)));self.skipWaiting()});
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting()});
