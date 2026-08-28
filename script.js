@@ -1,14 +1,5 @@
 'use strict';
 
-const BUNDLED = [
-  ['aguas-passadas','Águas Passadas','jpeg'],['amores-rasos','Amores Rasos','jpeg'],['andei','Andei','jpeg'],
-  ['cansado','Cansado','webp'],['cavaleiro-da-lua','Cavaleiro da Lua','jpg'],['eu-venci','Eu Venci','jpg'],
-  ['insuficiencia-cosmica','Insuficiência Cósmica','jpeg'],['judas','Judas','avif'],['melodias','Melodias','jpeg'],
-  ['morte','Morte','jpg'],['nuvens','Nuvens','jpeg'],['o-ciclo-odioso','O Ciclo Odioso','jpeg'],
-  ['querido-Deus','Querido Deus','jpg'],['sacrilegio-inepto','Sacrilégio Inepto','avif'],['trela','Trela','jpeg'],
-  ['vivendo-o-passado','Vivendo o Passado','jpeg']
-].map(([slug,title,cover],i)=>({id:`bundled:${slug}`,title,artist:'Matheus Galvão',album:'Biblioteca local',src:`musicas/${slug}.mp3`,cover:`musicas/covers/${slug}.${cover}`,addedAt:new Date(2025,9,12,i).toISOString(),favorite:false,bundled:true,duration:0}));
-
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 const state={songs:[],playlists:[],view:'all',playlistId:null,query:'',sort:'recent',currentId:null,queue:[],queueIndex:-1,shuffle:false,repeat:0,objectUrl:null};
@@ -22,10 +13,9 @@ const DB={
   delete(id){return new Promise((resolve,reject)=>{const r=this.db.transaction('tracks','readwrite').objectStore('tracks').delete(id);r.onsuccess=resolve;r.onerror=()=>reject(r.error)})}
 };
 
-function loadSettings(){try{state.playlists=JSON.parse(localStorage.getItem('localfy-playlists'))||[]}catch{state.playlists=[]}const fav=JSON.parse(localStorage.getItem('localfy-favorites')||'[]');BUNDLED.forEach(s=>s.favorite=fav.includes(s.id));audio.volume=Number(localStorage.getItem('localfy-volume')||.85);$('#volume').value=audio.volume}
-function savePlaylists(){localStorage.setItem('localfy-playlists',JSON.stringify(state.playlists))}
-function saveFavorites(){localStorage.setItem('localfy-favorites',JSON.stringify(state.songs.filter(s=>s.favorite&&s.bundled).map(s=>s.id)))}
-function uid(){return `track:${Date.now()}:${crypto.randomUUID?.()||Math.random().toString(36).slice(2)}`}
+function loadSettings(){try{state.playlists=JSON.parse(localStorage.getItem('localfy-playlists'))||[]}catch{state.playlists=[]}audio.volume=Number(localStorage.getItem('localfy-volume')||.85);$('#volume').value=audio.volume}
+function savePlaylists(){localStorage.setItem('localfy-playlists',JSON.stringify(state.playlists));window.localfySync?.markPlaylistsDirty()}
+function uid(){return crypto.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`}
 function cleanName(name){return name.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim().replace(/\b\w/g,c=>c.toUpperCase())}
 function formatTime(sec){if(!Number.isFinite(sec))return '0:00';const m=Math.floor(sec/60),s=Math.floor(sec%60);return `${m}:${String(s).padStart(2,'0')}`}
 function formatDate(date){const d=new Date(date);return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:d.getFullYear()===new Date().getFullYear()?undefined:'numeric'}).replace('.','')}
@@ -35,8 +25,9 @@ function toast(message,type='ok'){const el=document.createElement('div');el.clas
 
 async function init(){
   loadSettings();
-  try{await DB.open();const imported=await DB.all();state.songs=[...BUNDLED,...imported]}catch(e){console.error(e);state.songs=[...BUNDLED];toast('O armazenamento local não pôde ser aberto.','error')}
-  bind();render();updateNetwork();registerServiceWorker();hydrateDurations();
+  try{await DB.open();state.songs=await DB.all()}catch(e){console.error(e);state.songs=[];toast('O armazenamento local não pôde ser aberto.','error')}
+  bind();render();updateNetwork();registerServiceWorker();
+  await window.localfySync?.attach({db:DB,state,render});
 }
 
 function bind(){
@@ -66,27 +57,26 @@ function renderTracks(){const list=filteredSongs();$('#resultCount').textContent
 }
 function updateStats(){$('#songCount').textContent=state.songs.length;const total=state.songs.reduce((a,s)=>a+(s.duration||0),0);$('#totalDuration').textContent=total?`${Math.round(total/60)} min`:'—'}
 
-async function playSong(id,queue){const song=state.songs.find(s=>s.id===id);if(!song)return;if(state.objectUrl){URL.revokeObjectURL(state.objectUrl);state.objectUrl=null}state.currentId=id;state.queue=queue||filteredSongs().map(s=>s.id);state.queueIndex=state.queue.indexOf(id);audio.src=song.blob?(state.objectUrl=URL.createObjectURL(song.blob)):song.src;audio.load();try{await audio.play()}catch{toast('Toque novamente para reproduzir.','error')}song.lastPlayed=Date.now();if(!song.bundled)DB.put(song);updatePlayer();renderTracks();updateMediaSession(song)}
+async function playSong(id,queue){const song=state.songs.find(s=>s.id===id);if(!song)return;if(state.objectUrl){URL.revokeObjectURL(state.objectUrl);state.objectUrl=null}state.currentId=id;state.queue=queue||filteredSongs().map(s=>s.id);state.queueIndex=state.queue.indexOf(id);audio.src=state.objectUrl=URL.createObjectURL(song.blob);audio.load();try{await audio.play()}catch{toast('Toque novamente para reproduzir.','error')}song.lastPlayed=Date.now();DB.put(song);updatePlayer();renderTracks();updateMediaSession(song)}
 function togglePlay(){if(!state.currentId){const list=filteredSongs();if(list.length)playSong(list[0].id,list.map(s=>s.id));return}audio.paused?audio.play():audio.pause()}
 function next(){if(!state.queue.length)return;if(state.shuffle)state.queueIndex=Math.floor(Math.random()*state.queue.length);else state.queueIndex++;if(state.queueIndex>=state.queue.length){if(state.repeat===1)state.queueIndex=0;else{state.queueIndex=state.queue.length-1;audio.pause();return}}playSong(state.queue[state.queueIndex],state.queue)}
 function previous(){if(audio.currentTime>4){audio.currentTime=0;return}state.queueIndex=Math.max(0,state.queueIndex-1);playSong(state.queue[state.queueIndex],state.queue)}
 function updatePlayer(){const s=state.songs.find(s=>s.id===state.currentId);if(!s)return;$('#playerTitle').textContent=s.title;$('#playerArtist').textContent=s.artist||'Artista desconhecido';$('#playerCover').innerHTML=s.cover?`<img src="${s.cover}" alt="">`:'♫';$('#playerFavorite').textContent=s.favorite?'♥':'♡';$('#playerFavorite').classList.toggle('active',s.favorite)}
-async function toggleFavorite(id){const s=state.songs.find(s=>s.id===id);if(!s)return;s.favorite=!s.favorite;if(s.bundled)saveFavorites();else await DB.put(s);updatePlayer();renderTracks()}
+async function toggleFavorite(id){const s=state.songs.find(s=>s.id===id);if(!s)return;s.favorite=!s.favorite;window.localfySync?.markTrackDirty(s);await DB.put(s);updatePlayer();renderTracks()}
 
-function showMenu(e,id){const song=state.songs.find(s=>s.id===id),menu=$('#contextMenu');menu.innerHTML=`<button data-action="play">▶ Reproduzir agora</button>${state.playlists.map(p=>`<button data-playlist="${p.id}">＋ ${escapeHtml(p.name)}</button>`).join('')}<button data-action="favorite">${song.favorite?'♡ Remover das favoritas':'♥ Adicionar às favoritas'}</button>${song.bundled?'':'<button class="danger" data-action="delete">Excluir da biblioteca</button>'}`;menu.hidden=false;menu.style.left=`${Math.min(e.clientX,innerWidth-225)}px`;menu.style.top=`${Math.min(e.clientY,innerHeight-menu.offsetHeight-15)}px`;menu.onclick=async ev=>{const b=ev.target.closest('button');if(!b)return;if(b.dataset.action==='play')playSong(id);if(b.dataset.action==='favorite')toggleFavorite(id);if(b.dataset.playlist)addToPlaylist(id,b.dataset.playlist);if(b.dataset.action==='delete')await deleteSong(id);menu.hidden=true}}
+function showMenu(e,id){const song=state.songs.find(s=>s.id===id),menu=$('#contextMenu');menu.innerHTML=`<button data-action="play">▶ Reproduzir agora</button>${state.playlists.map(p=>`<button data-playlist="${p.id}">＋ ${escapeHtml(p.name)}</button>`).join('')}<button data-action="favorite">${song.favorite?'♡ Remover das favoritas':'♥ Adicionar às favoritas'}</button><button class="danger" data-action="delete">Excluir da biblioteca</button>`;menu.hidden=false;menu.style.left=`${Math.min(e.clientX,innerWidth-225)}px`;menu.style.top=`${Math.min(e.clientY,innerHeight-menu.offsetHeight-15)}px`;menu.onclick=async ev=>{const b=ev.target.closest('button');if(!b)return;if(b.dataset.action==='play')playSong(id);if(b.dataset.action==='favorite')toggleFavorite(id);if(b.dataset.playlist)addToPlaylist(id,b.dataset.playlist);if(b.dataset.action==='delete')await deleteSong(id);menu.hidden=true}}
 function addToPlaylist(trackId,playlistId){const p=state.playlists.find(p=>p.id===playlistId);if(!p)return;if(!p.trackIds.includes(trackId))p.trackIds.push(trackId);savePlaylists();toast(`Adicionada a “${p.name}”`)}
-async function deleteSong(id){const song=state.songs.find(s=>s.id===id);if(!song||song.bundled)return;if(!confirm(`Excluir “${song.title}” deste dispositivo?`))return;if(state.currentId===id){audio.pause();audio.removeAttribute('src');state.currentId=null}await DB.delete(id);state.songs=state.songs.filter(s=>s.id!==id);state.playlists.forEach(p=>p.trackIds=p.trackIds.filter(x=>x!==id));savePlaylists();render();toast('Música excluída')}
+async function deleteSong(id){const song=state.songs.find(s=>s.id===id);if(!song)return;if(!confirm(`Excluir “${song.title}” de todos os aparelhos sincronizados?`))return;if(state.currentId===id){audio.pause();audio.removeAttribute('src');state.currentId=null}window.localfySync?.queueDelete(song);await DB.delete(id);state.songs=state.songs.filter(s=>s.id!==id);state.playlists.forEach(p=>p.trackIds=p.trackIds.filter(x=>x!==id));savePlaylists();render();toast('Música excluída')}
 
 function openImport(){$('#importDialog').showModal()}
-async function importFiles(files){const valid=files.filter(f=>f.type.startsWith('audio/')||f.type.startsWith('video/')||/\.(mp3|mp4|m4a|wav|ogg|flac|aac|webm)$/i.test(f.name));if(!valid.length){toast('Escolha um arquivo de áudio ou vídeo compatível.','error');return}setImporting(true);let count=0;for(const file of valid){try{const meta=await inspectFile(file);const song={id:uid(),title:cleanName(file.name),artist:'Artista desconhecido',album:'Importados',addedAt:new Date().toISOString(),favorite:false,bundled:false,duration:meta.duration||0,blob:file,originalName:file.name,size:file.size};await DB.put(song);state.songs.push(song);count++}catch(e){console.error(e)}}setImporting(false);$('#fileInput').value='';$('#importDialog').close();render();toast(`${count} ${count===1?'música importada':'músicas importadas'}`)}
+async function importFiles(files){const valid=files.filter(f=>f.type.startsWith('audio/')||f.type.startsWith('video/')||/\.(mp3|mp4|m4a|wav|ogg|flac|aac|webm)$/i.test(f.name));if(!valid.length){toast('Escolha um arquivo de áudio ou vídeo compatível.','error');return}setImporting(true);let count=0;for(const file of valid){try{const meta=await inspectFile(file);const now=new Date().toISOString();const song={id:uid(),title:cleanName(file.name),artist:'Artista desconhecido',album:'Importados',addedAt:now,updatedAt:now,syncState:'pending',favorite:false,duration:meta.duration||0,blob:file,originalName:file.name,size:file.size};await DB.put(song);state.songs.push(song);count++}catch(e){console.error(e)}}setImporting(false);$('#fileInput').value='';$('#importDialog').close();render();toast(`${count} ${count===1?'música importada':'músicas importadas'}`);window.localfySync?.sync()}
 function inspectFile(file){return new Promise(resolve=>{const a=document.createElement('audio'),url=URL.createObjectURL(file),done=()=>{URL.revokeObjectURL(url);resolve({duration:Number.isFinite(a.duration)?a.duration:0})};a.preload='metadata';a.onloadedmetadata=done;a.onerror=done;a.src=url;setTimeout(done,4000)})}
 async function importUrl(){const raw=$('#urlInput').value.trim();let url;try{url=new URL(raw)}catch{toast('Digite um link válido.','error');return}if(/(youtube\.com|youtu\.be|spotify\.com)/i.test(url.hostname)){toast('Esse serviço não entrega o arquivo de áudio ao PWA. Baixe uma cópia autorizada e importe o arquivo.','error');return}setImporting(true);try{const res=await fetch(url);if(!res.ok)throw new Error();const blob=await res.blob();if(!blob.type.startsWith('audio/')&&!blob.type.startsWith('video/'))throw new Error();const name=decodeURIComponent(url.pathname.split('/').pop()||'Música importada');await importFiles([new File([blob],name,{type:blob.type})]);$('#urlInput').value=''}catch{setImporting(false);toast('O link não permitiu baixar o áudio. Tente importar o arquivo.','error')}}
 function setImporting(on){$('#importProgress').hidden=!on;$('#chooseFilesBtn').disabled=on;$('#urlImportBtn').disabled=on}
 
-async function hydrateDurations(){for(const song of BUNDLED){const a=document.createElement('audio');a.preload='metadata';a.src=song.src;a.onloadedmetadata=()=>{song.duration=a.duration;updateStats()}}}
 async function updateStorage(){if(!navigator.storage?.estimate)return;const {usage=0,quota=0}=await navigator.storage.estimate();$('#storageText').textContent=`${bytes(usage)} usados`;$('#storageBar').style.width=`${Math.min(100,usage/quota*100)||0}%`}
-function updateNetwork(){$('#offlineBadge').hidden=navigator.onLine}
+function updateNetwork(){$('#offlineBadge').hidden=navigator.onLine;if(navigator.onLine)window.localfySync?.sync()}
 function updateMediaSession(song){if(!('mediaSession'in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:song.title,artist:song.artist,album:song.album,artwork:song.cover?[{src:song.cover}]:[]});navigator.mediaSession.setActionHandler('play',()=>audio.play());navigator.mediaSession.setActionHandler('pause',()=>audio.pause());navigator.mediaSession.setActionHandler('previoustrack',previous);navigator.mediaSession.setActionHandler('nexttrack',next)}
-function registerServiceWorker(){if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(console.error))}
+function registerServiceWorker(){if(!('serviceWorker'in navigator))return;window.addEventListener('load',async()=>{try{const registration=await navigator.serviceWorker.register('./service-worker.js');registration.update();registration.addEventListener('updatefound',()=>{const worker=registration.installing;worker?.addEventListener('statechange',()=>{if(worker.state==='installed'&&navigator.serviceWorker.controller){toast('Nova versão instalada. Atualizando…');worker.postMessage({type:'SKIP_WAITING'})}})});let refreshing=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(refreshing)return;refreshing=true;location.reload()})}catch(error){console.error('Falha ao atualizar o PWA:',error)}})}
 
 init();

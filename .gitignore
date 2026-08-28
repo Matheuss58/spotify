@@ -1,0 +1,8 @@
+# A biblioteca pertence ao armazenamento local/remoto, não ao código-fonte.
+musicas/
+*.mp3
+*.m4a
+*.flac
+*.wav
+*.ogg
+*.aac
