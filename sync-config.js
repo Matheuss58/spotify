@@ -1,7 +1,7 @@
-// Preencha com os dados públicos mostrados em Supabase > Project Settings > API.
-// A publishable/anon key pode ficar no cliente quando as políticas RLS estão ativas.
+// Configuração pública do projeto Localfy no Supabase.
+// Nunca substitua esta chave Publishable por uma chave Secret/service_role.
 window.LOCALFY_SYNC_CONFIG = {
-  supabaseUrl: '',
-  supabaseKey: '',
+  supabaseUrl: 'https://eipwqdyferiflkhrhuld.supabase.co',
+  supabaseKey: 'sb_publishable_HnIBBx9r32fVL5ZG1Jb6Ww_uxyoQ_EQ',
   pollIntervalMs: 30000
 };
